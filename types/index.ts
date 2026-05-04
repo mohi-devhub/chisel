@@ -32,6 +32,14 @@ export interface GenerateResponse {
   remaining: number;
 }
 
+export interface AccountStatus {
+  signedIn: boolean;
+  tier: Tier;
+  effectiveTier: Tier;
+  remaining: number;
+  canUseAdvanced: boolean;
+}
+
 export interface QuotaResult {
   allowed: boolean;
   remaining: number;

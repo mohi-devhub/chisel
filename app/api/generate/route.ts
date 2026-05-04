@@ -1,11 +1,13 @@
 import { randomUUID } from "crypto";
+import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getFingerprint } from "@/lib/fingerprint";
 import { generateSkill } from "@/lib/anthropic";
 import { packageSkill } from "@/lib/packaging";
-import { checkAnonymousQuota, consumeAnonymousQuota } from "@/lib/quota";
+import { checkUserQuota, consumeUserQuota } from "@/lib/quota";
 import { createClient } from "@/lib/supabase/server";
+import { ensureUserRecord } from "@/lib/users";
 import type { GenerateRequest, GeneratedSkill } from "@/types";
 
 export const runtime = "nodejs";
@@ -19,60 +21,68 @@ export async function POST(request: NextRequest) {
       return parsed;
     }
 
-    if (
-      parsed.include.scripts ||
-      parsed.include.references ||
-      parsed.include.assets
-    ) {
+    const fingerprint = getFingerprint(request);
+    const { userId } = await auth();
+    const user = userId ? await ensureUserRecord(userId, fingerprint) : null;
+    let effectiveTier = user?.tier ?? "free";
+
+    if (!user) {
       return NextResponse.json(
         {
-          error: "upgrade_required",
-          message: "Anonymous generation includes SKILL.md only.",
+          error: "auth_required",
+          message: "Sign up to start a 7-day Creator trial before generating.",
+          remaining: 0,
         },
-        { status: 403 }
+        { status: 401 }
       );
     }
 
-    const fingerprint = getFingerprint(request);
-    const quota = await checkAnonymousQuota(fingerprint);
+    const userQuota = checkUserQuota(user);
+    effectiveTier = userQuota.effectiveTier;
 
-    if (!quota.allowed) {
+    if (!userQuota.allowed) {
       return NextResponse.json(
         {
           error: "quota_exceeded",
-          message: "You have used your 3 free anonymous generations.",
-          remaining: quota.remaining,
+          message: buildQuotaMessage(userQuota.reason),
+          remaining: userQuota.remaining,
         },
         { status: 402 }
       );
     }
 
     const generated = await generateSkill(parsed);
-    const freeSkill = stripAdvancedFiles(generated);
-    const updatedQuota = await consumeAnonymousQuota(fingerprint);
+    const effectiveSkill =
+      user && effectiveTier !== "free" ? generated : stripAdvancedFiles(generated);
+    const updatedQuota = await consumeUserQuota(user);
 
     if (!updatedQuota.allowed) {
       return NextResponse.json(
         {
           error: "quota_exceeded",
-          message: "You have used your 3 free anonymous generations.",
+          message: user
+            ? buildQuotaMessage(
+                "reason" in updatedQuota ? updatedQuota.reason : undefined
+              )
+            : "Sign up to start a 7-day Creator trial before generating.",
           remaining: updatedQuota.remaining,
         },
         { status: 402 }
       );
     }
 
-    const zip = await packageSkill(freeSkill);
-    const storagePath = `skills/anon/${fingerprint.slice(
+    const zip = await packageSkill(effectiveSkill);
+    const storagePath = `skills/${userId ?? "anon"}/${fingerprint.slice(
       0,
       16
     )}/${randomUUID()}.skill`;
 
     await storeGeneratedSkill({
-      skill: freeSkill,
+      skill: effectiveSkill,
       description: parsed.description,
       storagePath,
       zip,
+      userId,
     }).catch(() => {
       // Storage is best-effort — a bucket misconfiguration should not block the download.
     });
@@ -84,10 +94,10 @@ export async function POST(request: NextRequest) {
 
     if (wantsJson) {
       return NextResponse.json({
-        name: freeSkill.name,
-        skill_md: freeSkill.skill_md,
+        name: effectiveSkill.name,
+        skill_md: effectiveSkill.skill_md,
         zip_base64: zip.toString("base64"),
-        filename: `${freeSkill.name}.skill`,
+        filename: `${effectiveSkill.name}.skill`,
         remaining: updatedQuota.remaining,
       });
     }
@@ -100,7 +110,7 @@ export async function POST(request: NextRequest) {
     return new NextResponse(zipBody, {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${freeSkill.name}.skill"`,
+        "Content-Disposition": `attachment; filename="${effectiveSkill.name}.skill"`,
         "X-Generations-Remaining": String(updatedQuota.remaining),
       },
     });
@@ -175,16 +185,26 @@ function stripAdvancedFiles(skill: GeneratedSkill): GeneratedSkill {
   };
 }
 
+function buildQuotaMessage(reason?: string) {
+  if (reason === "monthly_limit") {
+    return "You have reached your monthly generation limit.";
+  }
+
+  return "Your trial or paid plan is required to generate skills.";
+}
+
 async function storeGeneratedSkill({
   skill,
   description,
   storagePath,
   zip,
+  userId,
 }: {
   skill: GeneratedSkill;
   description: string;
   storagePath: string;
   zip: Buffer;
+  userId: string | null;
 }) {
   const supabase = createClient();
 
@@ -200,14 +220,14 @@ async function storeGeneratedSkill({
   }
 
   const { error: insertError } = await supabase.from("skills").insert({
-    user_id: null,
+    user_id: userId,
     name: skill.name,
     description,
     storage_path: storagePath,
     structure: {
-      has_scripts: false,
-      has_references: false,
-      has_assets: false,
+      has_scripts: skill.scripts.length > 0,
+      has_references: skill.references.length > 0,
+      has_assets: skill.assets.length > 0,
     },
   });
 
