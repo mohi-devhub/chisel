@@ -64,15 +64,15 @@ Ordered build sequence for Claude Code. Complete phases in order — each phase 
 
 **Goal:** Free users can upgrade to Creator or Pro; any user can buy a credit pack.
 
-- [ ] `lib/razorpay.ts` — Razorpay SDK wrapper, `createOrder()`, `verifyWebhookSignature()`
-- [ ] `app/api/payments/create-order/route.ts` — supports plans: `creator_monthly`, `pro_monthly`, `pro_annual`, `credit_pack`
-- [ ] `app/api/payments/webhook/route.ts` — Signature verification; on `payment.captured`:
+- [x] `lib/razorpay.ts` — Razorpay SDK wrapper, `createOrder()`, `verifyWebhookSignature()`
+- [x] `app/api/payments/create-order/route.ts` — supports plans: `creator_monthly`, `pro_monthly`, `pro_annual`, `credit_pack`
+- [x] `app/api/payments/webhook/route.ts` — Signature verification; on `payment.captured`:
   - `creator_monthly` → `users.tier = 'creator'`
   - `pro_monthly` / `pro_annual` → `users.tier = 'pro'`
   - `credit_pack` → `users.credits += 20`
-- [ ] `app/pricing/page.tsx` — Three-column plan table (Creator / Pro / Pro Annual) + credit pack add-on section + Razorpay checkout trigger
-- [ ] Frontend Razorpay checkout integration (load Razorpay.js, open checkout modal)
-- [ ] Post-payment redirect → dashboard with success toast
+- [x] `app/pricing/page.tsx` — Three-column plan table (Creator / Pro / Pro Annual) + credit pack add-on section + Razorpay checkout trigger
+- [x] Frontend Razorpay checkout integration (load Razorpay.js, open checkout modal)
+- [x] Post-payment redirect → dashboard with success toast
 
 **Test:** Complete test payments for each plan type, verify correct `users.tier` and `users.credits` updates via webhook only (not frontend callback).
 
