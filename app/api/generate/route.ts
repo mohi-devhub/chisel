@@ -49,6 +49,19 @@ export async function POST(request: NextRequest) {
 
     const generated = await generateSkill(parsed);
     const freeSkill = stripAdvancedFiles(generated);
+    const updatedQuota = await consumeAnonymousQuota(fingerprint);
+
+    if (!updatedQuota.allowed) {
+      return NextResponse.json(
+        {
+          error: "quota_exceeded",
+          message: "You have used your 3 free anonymous generations.",
+          remaining: updatedQuota.remaining,
+        },
+        { status: 402 }
+      );
+    }
+
     const zip = await packageSkill(freeSkill);
     const storagePath = `skills/anon/${fingerprint.slice(
       0,
@@ -64,7 +77,6 @@ export async function POST(request: NextRequest) {
       // Storage is best-effort — a bucket misconfiguration should not block the download.
     });
 
-    const updatedQuota = await consumeAnonymousQuota(fingerprint);
     const wantsJson = request.headers
       .get("accept")
       ?.toLowerCase()

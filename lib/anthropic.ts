@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { GeneratedSkill, GenerateRequest } from "@/types";
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";
+const GENERATION_ATTEMPTS = 2;
 
 const systemPrompt = `You are an expert at writing Claude Code skills.
 
@@ -29,7 +30,12 @@ Respond only with JSON in this exact shape:
   "assets": [{ "filename": "template.txt", "content": "..." }]
 }`;
 
-export function buildPrompt(request: GenerateRequest) {
+export function buildPrompt(request: GenerateRequest, attempt = 1) {
+  const retryInstruction =
+    attempt > 1
+      ? "\nPrevious response could not be parsed or validated. Return strictly valid JSON with valid SKILL.md YAML frontmatter."
+      : "";
+
   return `Generate a Claude Code skill for the following request.
 
 Description:
@@ -39,6 +45,7 @@ Complexity: ${request.complexity}
 Include scripts: ${request.include.scripts}
 Include references: ${request.include.references}
 Include assets: ${request.include.assets}
+${retryInstruction}
 
 Return JSON only.`;
 }
@@ -54,21 +61,33 @@ export async function generateSkill(
     apiKey: process.env.ANTHROPIC_API_KEY,
   });
 
-  const response = await anthropic.messages.create({
-    model: process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL,
-    max_tokens: 4096,
-    temperature: 0,
-    system: systemPrompt,
-    messages: [{ role: "user", content: buildPrompt(request) }],
-  });
+  let lastError: unknown;
 
-  const text = response.content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
-    .join("\n")
-    .trim();
+  for (let attempt = 1; attempt <= GENERATION_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await anthropic.messages.create({
+        model: process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL,
+        max_tokens: 4096,
+        temperature: 0,
+        system: systemPrompt,
+        messages: [{ role: "user", content: buildPrompt(request, attempt) }],
+      });
 
-  return normalizeGeneratedSkill(parseGeneratedSkill(text));
+      const text = response.content
+        .filter((block) => block.type === "text")
+        .map((block) => block.text)
+        .join("\n")
+        .trim();
+
+      return parseGeneratedSkill(text);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Claude returned an invalid skill payload");
 }
 
 export function parseGeneratedSkill(text: string): GeneratedSkill {

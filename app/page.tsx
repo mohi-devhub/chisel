@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Download, Hammer, Loader2, Lock, Sparkles } from "lucide-react";
+import { Hammer, Loader2, Lock, Sparkles } from "lucide-react";
 
+import { DescriptionInput } from "@/components/generator/DescriptionInput";
+import { downloadSkill } from "@/components/generator/DownloadButton";
+import { PreviewPane } from "@/components/generator/PreviewPane";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,40 +16,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import type { GenerateRequest } from "@/types";
+import type { GenerateRequest, GenerateResponse } from "@/types";
 
 type Complexity = GenerateRequest["complexity"];
-
-interface GenerateResponse {
-  name: string;
-  skill_md: string;
-  zip_base64: string;
-  filename: string;
-  remaining: number;
-}
-
-const complexityOptions: Array<{
-  value: Complexity;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: "simple",
-    label: "Simple",
-    description: "Short instructions for a narrow workflow.",
-  },
-  {
-    value: "standard",
-    label: "Standard",
-    description: "Balanced instructions with practical examples.",
-  },
-  {
-    value: "full",
-    label: "Full",
-    description: "More complete guidance for broad workflows.",
-  },
-];
 
 export default function Home() {
   const [description, setDescription] = useState("");
@@ -55,21 +27,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const characterCount = description.length;
   const canGenerate = description.trim().length >= 10 && !isGenerating;
-
-  const preview = useMemo(() => {
-    if (generated?.skill_md) {
-      return generated.skill_md;
-    }
-
-    return `---
-name: your-skill-name
-description: Use this skill when...
----
-
-Your generated Claude Code skill preview will appear here after Chisel builds it.`;
-  }, [generated]);
 
   async function handleGenerate() {
     setError("");
@@ -161,48 +119,12 @@ Your generated Claude Code skill preview will appear here after Chisel builds it
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Textarea
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  placeholder="Example: A skill that helps review PostgreSQL migrations for locking risks, unsafe defaults, and rollback issues."
-                  className="min-h-44 resize-none text-sm leading-6"
-                  maxLength={4000}
+                <DescriptionInput
+                  description={description}
+                  complexity={complexity}
+                  onDescriptionChange={setDescription}
+                  onComplexityChange={setComplexity}
                 />
-
-                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                  <span>{characterCount}/4000 characters</span>
-                  <span>Minimum 10 characters</span>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {complexityOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setComplexity(option.value)}
-                      className={[
-                        "rounded-md border p-3 text-left transition-colors",
-                        complexity === option.value
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "bg-background hover:bg-accent",
-                      ].join(" ")}
-                    >
-                      <span className="block text-sm font-medium">
-                        {option.label}
-                      </span>
-                      <span
-                        className={[
-                          "mt-1 block text-xs leading-5",
-                          complexity === option.value
-                            ? "text-primary-foreground/80"
-                            : "text-muted-foreground",
-                        ].join(" ")}
-                      >
-                        {option.description}
-                      </span>
-                    </button>
-                  ))}
-                </div>
 
                 <div className="grid gap-2 rounded-md border bg-muted/30 p-3 text-sm sm:grid-cols-3">
                   {["scripts", "references", "assets"].map((item) => (
@@ -240,57 +162,9 @@ Your generated Claude Code skill preview will appear here after Chisel builds it
             </Card>
           </div>
 
-          <Card className="rounded-lg">
-            <CardHeader className="border-b">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <CardTitle>SKILL.md Preview</CardTitle>
-                  <CardDescription>
-                    Anonymous downloads include the generated `SKILL.md`.
-                  </CardDescription>
-                </div>
-                {generated ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    onClick={() => downloadSkill(generated)}
-                  >
-                    <Download className="size-4" />
-                    Download
-                  </Button>
-                ) : null}
-              </div>
-            </CardHeader>
-            <CardContent className="flex min-h-[520px] flex-col p-0">
-              <pre className="h-full flex-1 overflow-auto p-4 text-sm leading-6">
-                <code>{preview}</code>
-              </pre>
-              {generated ? (
-                <div className="border-t px-4 py-3 text-sm text-muted-foreground">
-                  {generated.remaining} anonymous generations remaining.
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+          <PreviewPane generated={generated} />
         </section>
       </div>
     </main>
   );
-}
-
-function downloadSkill(response: GenerateResponse) {
-  const bytes = Uint8Array.from(atob(response.zip_base64), (char) =>
-    char.charCodeAt(0)
-  );
-  const blob = new Blob([bytes], { type: "application/zip" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = response.filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
 }

@@ -24,6 +24,14 @@ export interface GenerateRequest {
   };
 }
 
+export interface GenerateResponse {
+  name: string;
+  skill_md: string;
+  zip_base64: string;
+  filename: string;
+  remaining: number;
+}
+
 export interface QuotaResult {
   allowed: boolean;
   remaining: number;

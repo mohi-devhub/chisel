@@ -28,15 +28,15 @@ Ordered build sequence for Claude Code. Complete phases in order — each phase 
 
 **Goal:** Anonymous user can describe a skill and download a zip.
 
-- [ ] `lib/anthropic.ts` — Claude API client, `buildPrompt()`, `generateSkill()`, JSON response parser with retry
-- [ ] `lib/packaging.ts` — `packageSkill(generated) → Buffer` using JSZip
-- [ ] `lib/fingerprint.ts` — `getFingerprint(req)` using IP + User-Agent hash
-- [ ] `lib/quota.ts` — `checkQuota(fingerprint | userId)` → `{ allowed: boolean, remaining: number }`
-- [ ] `app/api/generate/route.ts` — Full generation endpoint (fingerprint → quota check → Claude → validate → zip → upload → return binary)
-- [ ] `components/generator/DescriptionInput.tsx` — Textarea with char counter
-- [ ] `components/generator/PreviewPane.tsx` — Shows SKILL.md content after generation
-- [ ] `components/generator/DownloadButton.tsx` — Triggers download of binary response
-- [ ] `app/page.tsx` — Landing page with generator UI, generation counter display
+- [x] `lib/anthropic.ts` — Claude API client, `buildPrompt()`, `generateSkill()`, JSON response parser with retry
+- [x] `lib/packaging.ts` — `packageSkill(generated) → Buffer` using JSZip
+- [x] `lib/fingerprint.ts` — `getFingerprint(req)` using IP + User-Agent hash
+- [x] `lib/quota.ts` — `checkQuota(fingerprint | userId)` → `{ allowed: boolean, remaining: number }`
+- [x] `app/api/generate/route.ts` — Full generation endpoint (fingerprint → quota check → Claude → validate → zip → upload → return binary)
+- [x] `components/generator/DescriptionInput.tsx` — Textarea with char counter
+- [x] `components/generator/PreviewPane.tsx` — Shows SKILL.md content after generation
+- [x] `components/generator/DownloadButton.tsx` — Triggers download of binary response
+- [x] `app/page.tsx` — Landing page with generator UI, generation counter display
 
 **Test:** Generate a skill anonymously, download zip, verify structure.
 
