@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Hammer, Loader2, Lock, Sparkles } from "lucide-react";
+import { Hammer, Loader2, Sparkles } from "lucide-react";
 
 import { DescriptionInput } from "@/components/generator/DescriptionInput";
 import { downloadSkill } from "@/components/generator/DownloadButton";
+import { OptionsPanel } from "@/components/generator/OptionsPanel";
 import { PreviewPane } from "@/components/generator/PreviewPane";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,18 +17,48 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { GenerateRequest, GenerateResponse } from "@/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { AccountStatus, GenerateRequest, GenerateResponse } from "@/types";
 
 type Complexity = GenerateRequest["complexity"];
 
 export default function Home() {
   const [description, setDescription] = useState("");
   const [complexity, setComplexity] = useState<Complexity>("standard");
+  const [include, setInclude] = useState<GenerateRequest["include"]>({
+    scripts: false,
+    references: false,
+    assets: false,
+  });
+  const [account, setAccount] = useState<AccountStatus | null>(null);
   const [generated, setGenerated] = useState<GenerateResponse | null>(null);
   const [error, setError] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
   const canGenerate = description.trim().length >= 10 && !isGenerating;
+  const requiresTrial = account?.effectiveTier === "free";
+
+  useEffect(() => {
+    let ignore = false;
+
+    refreshAccount().then((payload) => {
+      if (!ignore && payload) {
+        setAccount(payload);
+      }
+    });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   async function handleGenerate() {
     setError("");
@@ -43,17 +74,20 @@ export default function Home() {
         body: JSON.stringify({
           description,
           complexity,
-          include: {
-            scripts: false,
-            references: false,
-            assets: false,
-          },
+          include,
         } satisfies GenerateRequest),
       });
 
       const payload = await response.json();
 
       if (!response.ok) {
+        if (
+          payload.error === "auth_required" ||
+          payload.error === "quota_exceeded"
+        ) {
+          setShowUpgradePrompt(true);
+        }
+
         throw new Error(
           payload.message ?? payload.details ?? "Could not generate skill."
         );
@@ -61,6 +95,10 @@ export default function Home() {
 
       setGenerated(payload as GenerateResponse);
       downloadSkill(payload as GenerateResponse);
+      const nextAccount = await refreshAccount();
+      if (nextAccount) {
+        setAccount(nextAccount);
+      }
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not generate skill."
@@ -92,6 +130,9 @@ export default function Home() {
             <Button variant="outline" asChild>
               <Link href="/pricing">Pricing</Link>
             </Button>
+            <Button variant="ghost" asChild>
+              <Link href="/sign-in">Sign in</Link>
+            </Button>
           </nav>
         </header>
 
@@ -99,7 +140,7 @@ export default function Home() {
           <div className="flex flex-col gap-4">
             <div>
               <Badge variant="outline" className="mb-3">
-                3 anonymous generations
+                Trial required
               </Badge>
               <h2 className="max-w-2xl text-3xl font-semibold tracking-normal sm:text-4xl">
                 Describe a workflow. Download a Claude Code skill.
@@ -126,17 +167,18 @@ export default function Home() {
                   onComplexityChange={setComplexity}
                 />
 
-                <div className="grid gap-2 rounded-md border bg-muted/30 p-3 text-sm sm:grid-cols-3">
-                  {["scripts", "references", "assets"].map((item) => (
-                    <div
-                      key={item}
-                      className="flex items-center justify-between gap-2 rounded-md bg-background px-3 py-2 text-muted-foreground"
-                    >
-                      <span>{item}/</span>
-                      <Lock className="size-3.5" />
-                    </div>
-                  ))}
-                </div>
+                <OptionsPanel
+                  include={include}
+                  canUseAdvanced={Boolean(account?.canUseAdvanced)}
+                  onChange={setInclude}
+                />
+
+                {requiresTrial ? (
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                    Start a 7-day Creator trial to generate skills. Free
+                    accounts cannot generate.
+                  </div>
+                ) : null}
 
                 {error ? (
                   <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -165,6 +207,36 @@ export default function Home() {
           <PreviewPane generated={generated} />
         </section>
       </div>
+
+      <Dialog open={showUpgradePrompt} onOpenChange={setShowUpgradePrompt}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generation limit reached</DialogTitle>
+            <DialogDescription>
+              Sign up to start a 7-day Creator trial and continue generating
+              skills with scripts, references, and assets.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUpgradePrompt(false)}>
+              Close
+            </Button>
+            <Button asChild>
+              <Link href="/sign-up">Start trial</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
+}
+
+async function refreshAccount() {
+  const response = await fetch("/api/me", { cache: "no-store" });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return (await response.json()) as AccountStatus;
 }

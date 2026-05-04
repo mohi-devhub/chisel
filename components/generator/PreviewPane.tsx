@@ -45,7 +45,7 @@ export function PreviewPane({ generated }: PreviewPaneProps) {
         </pre>
         {generated ? (
           <div className="border-t px-4 py-3 text-sm text-muted-foreground">
-            {generated.remaining} anonymous generations remaining.
+            {generated.remaining} generations remaining.
           </div>
         ) : null}
       </CardContent>
