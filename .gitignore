@@ -43,3 +43,6 @@ next-env.d.ts
 
 # project-specific
 CLAUDE.md
+
+# clerk configuration (can include secrets)
+/.clerk/
