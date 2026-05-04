@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.91.0",
+    "@anthropic-ai/sdk": "^0.91.1",
     "@clerk/nextjs": "^7.2.5",
     "@supabase/supabase-js": "^2.104.1",
     "class-variance-authority": "^0.7.1",
@@ -32,5 +32,10 @@
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "8.5.10"
+    }
   }
 }
