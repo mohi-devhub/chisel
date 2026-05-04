@@ -1,6 +1,6 @@
 -- Users table (id matches Clerk user ID)
 create table users (
-  id                  uuid primary key,
+  id                  text primary key,
   email               text not null unique,
   tier                text not null default 'free', -- 'free' | 'creator' | 'pro'
   gen_count           integer not null default 0,
@@ -14,7 +14,7 @@ create table users (
 -- Skills table (all generated skills)
 create table skills (
   id            uuid primary key default gen_random_uuid(),
-  user_id       uuid references users(id),
+  user_id       text references users(id),
   name          text not null,
   description   text not null,
   storage_path  text not null,
@@ -26,7 +26,7 @@ create table skills (
 create table marketplace_listings (
   id              uuid primary key default gen_random_uuid(),
   skill_id        uuid references skills(id),
-  author_id       uuid references users(id),
+  author_id       text references users(id),
   name            text not null,
   description     text not null,
   tags            text[],
@@ -48,7 +48,7 @@ create table anonymous_sessions (
 -- Payments (Razorpay order + payment records)
 create table payments (
   id                      uuid primary key default gen_random_uuid(),
-  user_id                 uuid references users(id),
+  user_id                 text references users(id),
   razorpay_order_id       text not null,
   razorpay_payment_id     text,
   plan                    text not null,
