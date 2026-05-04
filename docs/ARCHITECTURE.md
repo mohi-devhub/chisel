@@ -148,11 +148,11 @@ Core skill generation endpoint.
 **Server logic:**
 1. Identify caller: Clerk session (authenticated) or fingerprint (anonymous)
 2. Check generation quota:
-   - Anonymous / free: lifetime `gen_count < 3`
+   - Anonymous / free: no generation allowed; return sign-up / trial prompt
    - Creator (or active trial): if `now() > monthly_reset_at` reset `monthly_gen_count`; check `monthly_gen_count < 30`; if over cap, check `credits > 0` and deduct 1 credit, else 403
    - Pro: same as creator but cap is 100/month
    - Overage: deduct from `users.credits`; if credits = 0 return 402 with upgrade prompt
-3. Check `include.*` flags: if `scripts/references/assets` requested and user is free tier → return 403 with upgrade prompt
+3. Check `include.*` flags: only active trial, Creator, and Pro users can generate any output
 4. Build prompt and call Claude API
 5. Parse response into file tree
 6. Validate SKILL.md YAML frontmatter (name + description required)
@@ -310,10 +310,10 @@ async function packageSkill(generated: GeneratedSkill): Promise<Buffer> {
 
 ## 7. Anonymous Session Fingerprinting
 
-For anonymous users, generation quota is enforced via:
+For anonymous users, generation is blocked before model invocation. Fingerprinting remains for trial/account linkage and abuse analytics:
 - SHA-256 hash of: `IP address + User-Agent`
 - Stored in `anonymous_sessions` table
-- On sign-up: if anonymous `fingerprint` matches, carry over `gen_count` to user account (counts toward the 3-lifetime free limit)
+- On sign-up: if anonymous `fingerprint` matches, carry over any historical `gen_count` to user account
 
 This is a soft gate — not cryptographically secure, but sufficient for casual abuse prevention.
 

@@ -53,23 +53,21 @@ Discovered Claude Code recently. Can describe what they want in English but has 
 2. Enters a plain-English skill description in the text box
 3. Optionally selects: complexity level (Simple / Standard / Full), and which folders to include (scripts/, references/, assets/)
 4. Clicks **Chisel It**
-5. Claude API generates the full skill structure
-6. User sees a preview of SKILL.md in the UI; scripts/references sections are visible but blurred with an upgrade overlay
-7. User downloads the `.skill` zip file (SKILL.md only)
-8. Counter decrements: 3 free generations lifetime (tracked via anonymous session + IP fingerprint)
-9. At generation 2 (not 3), an inline upgrade nudge appears — don't wait until the wall
+5. User is prompted to sign up for the 7-day Creator trial
+6. After sign-up, Claude API generates the full skill structure
+7. User sees a preview of SKILL.md in the UI
+8. User downloads the `.skill` zip file
 
 ### 6.2 Account Creation Gate
-- Triggered when: user tries to publish a skill, OR hits the 3-generation free limit
+- Triggered when: user tries to generate or publish a skill
 - Sign up / log in via Clerk (email + Google OAuth)
-- On sign-up: existing anonymous generation count carries over via session linkage
 - New accounts receive a 7-day Creator trial automatically
 
 ### 6.3 Authenticated — Free Tier
-- Same as anonymous but generations tied to account (3 total across anonymous + authenticated sessions)
+- Cannot generate skills unless an active trial or paid tier is present
 - Can view personal skill history
 - Cannot publish to marketplace (requires Pro)
-- Cannot generate scripts/, references/, assets/ (free tier = SKILL.md only)
+- Cannot generate scripts/, references/, assets/
 
 ### 6.4 Authenticated — Creator Tier
 - 30 generations per month (monthly reset)
@@ -104,15 +102,15 @@ Discovered Claude Code recently. Can describe what they want in English but has 
 ### 7.1 Skill Generator
 | Feature | Free | Creator (₹399/mo) | Pro (₹899/mo) |
 |---|---|---|---|
-| Generations | 3 lifetime | 30/month | 100/month |
+| Generations | 0 | 30/month | 100/month |
 | Overage | — | Buy credit pack | Buy credit pack |
-| Output: SKILL.md | ✅ | ✅ | ✅ |
+| Output: SKILL.md | ❌ | ✅ | ✅ |
 | Output: scripts/ | ❌ | ✅ | ✅ |
 | Output: references/ | ❌ | ✅ | ✅ |
 | Output: assets/ | ❌ | ✅ | ✅ |
-| SKILL.md preview in UI | ✅ | ✅ | ✅ |
-| Scripts/refs preview (blurred) | ✅ (blurred) | ✅ | ✅ |
-| Download as .skill zip | ✅ | ✅ | ✅ |
+| SKILL.md preview in UI | ❌ | ✅ | ✅ |
+| Scripts/refs preview (blurred) | ❌ | ✅ | ✅ |
+| Download as .skill zip | ❌ | ✅ | ✅ |
 | Generation history | ❌ | ✅ | ✅ |
 | Publish to marketplace | ❌ | ❌ | ✅ |
 | 7-day trial on signup | — | ✅ (auto) | — |
@@ -127,7 +125,7 @@ Discovered Claude Code recently. Can describe what they want in English but has 
 ### 7.3 Auth & Accounts
 - Clerk for auth (email + Google OAuth)
 - Profile page: generation history, published skills, download stats (pro)
-- Upgrade prompt when free limit hit
+- Trial prompt before generation for anonymous/free users
 
 ### 7.4 Payments
 - Razorpay integration
@@ -157,7 +155,7 @@ Discovered Claude Code recently. Can describe what they want in English but has 
 
 | Plan | Price | Limit | Full structure | Marketplace |
 |---|---|---|---|---|
-| Free | ₹0 | 3 gens (lifetime) | ❌ | ❌ |
+| Free | ₹0 | 0 gens | ❌ | ❌ |
 | Creator | ₹399/month | 30 gens/month | ✅ | ❌ |
 | Pro | ₹899/month | 100 gens/month | ✅ | ✅ |
 | Pro Annual | ₹7,499/year | 100 gens/month | ✅ | ✅ |

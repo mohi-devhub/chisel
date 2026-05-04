@@ -26,7 +26,7 @@ Ordered build sequence for Claude Code. Complete phases in order — each phase 
 
 ## Phase 1 — Core Generation (No Auth)
 
-**Goal:** Anonymous user can describe a skill and download a zip.
+**Goal:** Visitor can describe a skill, then sign up for a trial to generate and download a zip.
 
 - [x] `lib/anthropic.ts` — Claude API client, `buildPrompt()`, `generateSkill()`, JSON response parser with retry
 - [x] `lib/packaging.ts` — `packageSkill(generated) → Buffer` using JSZip
@@ -38,7 +38,7 @@ Ordered build sequence for Claude Code. Complete phases in order — each phase 
 - [x] `components/generator/DownloadButton.tsx` — Triggers download of binary response
 - [x] `app/page.tsx` — Landing page with generator UI, generation counter display
 
-**Test:** Generate a skill anonymously, download zip, verify structure.
+**Test:** Attempt anonymous generation, verify sign-up gate. Sign up for trial, generate a skill, download zip, verify structure.
 
 ---
 
@@ -46,17 +46,17 @@ Ordered build sequence for Claude Code. Complete phases in order — each phase 
 
 **Goal:** Accounts, quota tied to user, pro gate on advanced output.
 
-- [ ] `app/(auth)/sign-in/page.tsx` and `sign-up/page.tsx` — Clerk hosted pages
-- [ ] Supabase `users` row creation on Clerk `user.created` webhook
-- [ ] Update `app/api/generate/route.ts` — detect Clerk session, enforce tier gates server-side
-- [ ] Anonymous → authenticated gen_count carry-over on sign-up (session cookie linkage)
-- [ ] `components/generator/OptionsPanel.tsx` — Scripts/References/Assets checkboxes (pro-gated with upgrade tooltip)
-- [ ] Upgrade nudge shown inline at generation 2 (before the hard wall at 3)
-- [ ] Upgrade prompt modal when free user hits 3-generation limit
-- [ ] On sign-up: set `trial_ends_at = now() + 7 days`, carry over anonymous gen_count
-- [ ] Trial users treated as creator tier in quota and output logic
+- [x] `app/(auth)/sign-in/page.tsx` and `sign-up/page.tsx` — Clerk hosted pages
+- [x] Supabase `users` row creation on Clerk `user.created` webhook
+- [x] Update `app/api/generate/route.ts` — detect Clerk session, enforce tier gates server-side
+- [x] Anonymous → authenticated gen_count carry-over on sign-up (session cookie linkage; no free anonymous generations are allowed)
+- [x] `components/generator/OptionsPanel.tsx` — Scripts/References/Assets checkboxes (pro-gated with upgrade tooltip)
+- [x] Trial nudge shown inline before generation
+- [x] Upgrade prompt modal when anonymous/free user tries to generate
+- [x] On sign-up: set `trial_ends_at = now() + 7 days`, carry over anonymous gen_count
+- [x] Trial users treated as creator tier in quota and output logic
 
-**Test:** Hit 3 generations anonymously, see gate. Sign up, verify 7-day trial activates and carry-over applies. Verify scripts checkbox blocked for free user at API level but accessible during trial.
+**Test:** Try generating anonymously, see gate. Sign up, verify 7-day trial activates. Verify scripts checkbox blocked for free user at API level but accessible during trial.
 
 ---
 
@@ -125,7 +125,7 @@ Ordered build sequence for Claude Code. Complete phases in order — each phase 
 ## Definition of Done (MVP)
 
 - [ ] Anonymous user can generate a SKILL.md-only skill and download zip
-- [ ] Free tier enforces 3-generation lifetime limit across anonymous + authenticated sessions
+- [ ] Free tier blocks generation unless an active trial or paid tier is present
 - [ ] Pro tier unlocks unlimited + full structure
 - [ ] Razorpay payment upgrades tier via webhook (not frontend)
 - [ ] Marketplace shows published skills, anyone can download
