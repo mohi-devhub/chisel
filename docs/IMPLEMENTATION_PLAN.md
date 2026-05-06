@@ -82,11 +82,11 @@ Ordered build sequence for Claude Code. Complete phases in order — each phase 
 
 **Goal:** Authenticated users can see their history.
 
-- [ ] `app/dashboard/page.tsx` — Auth-gated, shows:
+- [x] `app/dashboard/page.tsx` — Auth-gated, shows:
   - Generation history (list of skills with name, date, download link)
   - Pro users: published marketplace skills + download counts
-- [ ] `app/api/dashboard/skills/route.ts` — Fetch user's skills from Supabase
-- [ ] Re-download endpoint: generate signed URL for previously generated skill zip
+- [x] `app/api/dashboard/skills/route.ts` — Fetch user's skills from Supabase
+- [x] Re-download endpoint: generate signed URL for previously generated skill zip
 
 **Test:** Generate 3 skills, sign in, verify history appears.
 
@@ -96,14 +96,14 @@ Ordered build sequence for Claude Code. Complete phases in order — each phase 
 
 **Goal:** Public skill catalog, pro users can publish.
 
-- [ ] `app/marketplace/page.tsx` — Grid of skill cards, filter by category/tags, sort
-- [ ] `app/marketplace/[id]/page.tsx` — Skill detail: name, description, tags, author, SKILL.md preview, download button
-- [ ] `app/api/marketplace/route.ts` — Paginated listing fetch with filters
-- [ ] `app/api/marketplace/[id]/download/route.ts` — Increment download count + return signed URL
-- [ ] `app/api/publish/route.ts` — Pro-only publish endpoint
-- [ ] `components/marketplace/SkillCard.tsx`
-- [ ] `components/marketplace/FilterBar.tsx`
-- [ ] Publish flow in dashboard: "Publish to Marketplace" button on skill history items (pro only)
+- [x] `app/marketplace/page.tsx` — Grid of skill cards, filter by category/tags, sort
+- [x] `app/marketplace/[id]/page.tsx` — Skill detail: name, description, tags, author, SKILL.md preview, download button
+- [x] `app/api/marketplace/route.ts` — Paginated listing fetch with filters
+- [x] `app/api/marketplace/[id]/download/route.ts` — Increment download count + return signed URL
+- [x] `app/api/publish/route.ts` — Pro-only publish endpoint
+- [x] `components/marketplace/SkillCard.tsx`
+- [x] `components/marketplace/FilterBar.tsx`
+- [x] Publish flow in dashboard: "Publish to Marketplace" button on skill history items (pro only)
 
 **Test:** Publish a skill as pro user, find it on marketplace, download as anonymous user.
 
