@@ -18,7 +18,7 @@ export function FilterBar({
   sort: MarketplaceSort;
 }) {
   return (
-    <form className="grid gap-3 rounded-lg border bg-card p-3 md:grid-cols-[1fr_1fr_150px_auto]">
+    <form className="grid gap-3 rounded-xl border border-border/60 bg-card/60 p-3 backdrop-blur-sm md:grid-cols-[1fr_1fr_150px_auto]">
       <label className="sr-only" htmlFor="category">
         Category
       </label>
@@ -28,6 +28,7 @@ export function FilterBar({
         list="marketplace-categories"
         placeholder="Category"
         defaultValue={selectedCategory}
+        className="border-border/50 bg-background/50 placeholder:text-muted-foreground/50 focus-visible:border-primary/50 focus-visible:ring-primary/20"
       />
       <datalist id="marketplace-categories">
         {categories.map((category) => (
@@ -44,6 +45,7 @@ export function FilterBar({
         list="marketplace-tags"
         placeholder="Tag"
         defaultValue={selectedTag}
+        className="border-border/50 bg-background/50 placeholder:text-muted-foreground/50 focus-visible:border-primary/50 focus-visible:ring-primary/20"
       />
       <datalist id="marketplace-tags">
         {tags.map((tag) => (
@@ -58,14 +60,14 @@ export function FilterBar({
         id="sort"
         name="sort"
         defaultValue={sort}
-        className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="h-9 rounded-md border border-border/50 bg-background/50 px-3 text-sm outline-none focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20"
       >
         <option value="recent">Recent</option>
         <option value="popular">Popular</option>
         <option value="name">Name</option>
       </select>
 
-      <Button type="submit">
+      <Button type="submit" className="shadow-[0_0_16px_theme(colors.primary/20%)]">
         <Search className="size-4" />
         Filter
       </Button>

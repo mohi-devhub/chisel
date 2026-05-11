@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, CreditCard, Loader2, PackagePlus } from "lucide-react";
+import { Check, CreditCard, Hammer, Loader2, PackagePlus, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,44 +13,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import type { Plan } from "@/types";
 
-interface OrderResponse {
-  order_id: string;
-  amount: number;
-  currency: string;
-  key_id: string;
+interface CheckoutResponse {
+  checkout_url: string;
+  checkout_session_id: string;
   plan: Plan;
   name: string;
 }
 
-interface RazorpayCheckoutOptions {
-  key: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description: string;
-  order_id: string;
-  handler: () => void;
-  modal?: {
-    ondismiss?: () => void;
-  };
-  theme?: {
-    color?: string;
-  };
-}
-
-interface RazorpayConstructor {
-  new (options: RazorpayCheckoutOptions): {
-    open: () => void;
-  };
-}
-
-declare global {
-  interface Window {
-    Razorpay?: RazorpayConstructor;
-  }
-}
+const PRO_MONTHLY_PRICE = 39.99;
+const PRO_ANNUAL_PRICE = 439.99;
+const PRO_ANNUAL_SAVINGS_PERCENT = Math.round(
+  ((PRO_MONTHLY_PRICE * 12 - PRO_ANNUAL_PRICE) / (PRO_MONTHLY_PRICE * 12)) *
+    100
+);
 
 const plans: Array<{
   plan: Plan;
@@ -60,13 +37,15 @@ const plans: Array<{
   cadence: string;
   description: string;
   badge?: string;
+  savings?: string;
+  featured?: boolean;
   features: string[];
 }> = [
   {
     plan: "creator_monthly",
     name: "Creator",
-    price: "INR 399",
-    cadence: "per month",
+    price: "$14.99",
+    cadence: "/ month",
     description: "Full skill generation for regular Claude Code users.",
     features: [
       "30 generations per month",
@@ -78,10 +57,11 @@ const plans: Array<{
   {
     plan: "pro_monthly",
     name: "Pro",
-    price: "INR 899",
-    cadence: "per month",
+    price: `$${PRO_MONTHLY_PRICE.toFixed(2)}`,
+    cadence: "/ month",
     description: "Higher volume generation and marketplace publishing.",
-    badge: "Publish",
+    badge: "Most popular",
+    featured: true,
     features: [
       "100 generations per month",
       "Full skill structure",
@@ -92,10 +72,11 @@ const plans: Array<{
   {
     plan: "pro_annual",
     name: "Pro Annual",
-    price: "INR 7,499",
-    cadence: "per year",
+    price: `$${PRO_ANNUAL_PRICE.toFixed(2)}`,
+    cadence: "/ year",
     description: "The Pro tier with annual billing.",
-    badge: "Best value",
+    badge: `Save ${PRO_ANNUAL_SAVINGS_PERCENT}%`,
+    savings: `vs $${(PRO_MONTHLY_PRICE * 12).toFixed(0)} billed monthly`,
     features: [
       "100 generations per month",
       "Full skill structure",
@@ -115,9 +96,7 @@ export default function PricingPage() {
     setError("");
 
     try {
-      await loadRazorpayScript();
-
-      const response = await fetch("/api/payments/create-order", {
+      const response = await fetch("/api/payments/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),
@@ -136,31 +115,8 @@ export default function PricingPage() {
         );
       }
 
-      const order = payload as OrderResponse;
-
-      if (!window.Razorpay) {
-        throw new Error("Razorpay checkout could not be loaded.");
-      }
-
-      const checkout = new window.Razorpay({
-        key: order.key_id,
-        amount: order.amount,
-        currency: order.currency,
-        name: "Chisel",
-        description: order.name,
-        order_id: order.order_id,
-        handler: () => {
-          router.push("/dashboard?payment=success");
-        },
-        modal: {
-          ondismiss: () => setLoadingPlan(null),
-        },
-        theme: {
-          color: "#111111",
-        },
-      });
-
-      checkout.open();
+      const checkout = payload as CheckoutResponse;
+      window.location.assign(checkout.checkout_url);
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not start checkout."
@@ -170,77 +126,114 @@ export default function PricingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between border-b pb-4">
-          <Link href="/" className="text-lg font-semibold">
-            Chisel
+    <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[500px] w-[800px] rounded-full bg-primary/5 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+        {/* Header */}
+        <header className="flex items-center justify-between border-b border-border/60 pb-4">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/40%)]">
+              <Hammer className="size-4" />
+            </div>
+            <span className="text-base font-semibold tracking-tight">Chisel</span>
           </Link>
-          <nav className="flex items-center gap-2">
-            <Button variant="ghost" asChild>
+          <nav className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
               <Link href="/marketplace">Marketplace</Link>
             </Button>
-            <Button variant="outline" asChild>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
               <Link href="/dashboard">Dashboard</Link>
             </Button>
           </nav>
         </header>
 
-        <section className="py-8">
-          <div className="mb-6 max-w-2xl">
-            <Badge variant="outline" className="mb-3">
-              Trial, Creator, or Pro required
-            </Badge>
-            <h1 className="text-3xl font-semibold tracking-normal sm:text-4xl">
-              Choose a generation plan
+        <section className="py-10">
+          {/* Hero */}
+          <div className="mb-10 text-center">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+              <Zap className="size-3" />
+              Simple, transparent pricing
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Choose your{" "}
+              <span className="bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
+                generation plan
+              </span>
             </h1>
-            <p className="mt-3 text-base leading-7 text-muted-foreground">
-              Payments are confirmed by Razorpay webhook before account access
-              changes.
+            <p className="mt-3 text-sm text-muted-foreground">
+              Payments confirmed by Dodo Payments webhook before account access changes.
             </p>
           </div>
 
           {error ? (
-            <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {error}
             </div>
           ) : null}
 
           <div className="grid gap-4 lg:grid-cols-3">
             {plans.map((item) => (
-              <Card key={item.plan} className="rounded-lg">
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <CardTitle>{item.name}</CardTitle>
-                      <CardDescription className="mt-2">
-                        {item.description}
-                      </CardDescription>
-                    </div>
-                    {item.badge ? (
-                      <Badge variant="secondary">{item.badge}</Badge>
-                    ) : null}
+              <Card
+                key={item.plan}
+                className={[
+                  "relative flex flex-col rounded-xl transition-all duration-200",
+                  item.featured
+                    ? "border-primary/40 bg-primary/5 shadow-[0_0_30px_theme(colors.primary/10%)]"
+                    : "border-border/60 bg-card/80",
+                ].join(" ")}
+              >
+                {item.badge ? (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge
+                      className={item.featured ? "bg-primary text-primary-foreground border-0" : ""}
+                      variant={item.featured ? "default" : "secondary"}
+                    >
+                      {item.badge}
+                    </Badge>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  <div>
-                    <div className="text-3xl font-semibold">{item.price}</div>
-                    <div className="mt-1 text-sm text-muted-foreground">
-                      {item.cadence}
-                    </div>
-                  </div>
+                ) : null}
 
-                  <ul className="space-y-2 text-sm">
+                <CardHeader className="pt-6 pb-3">
+                  <CardTitle className={item.featured ? "text-primary" : ""}>{item.name}</CardTitle>
+                  <CardDescription>{item.description}</CardDescription>
+                </CardHeader>
+
+                <CardContent className="pb-3">
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-bold tracking-tight">{item.price}</span>
+                    <span className="mb-1 text-sm text-muted-foreground">{item.cadence}</span>
+                  </div>
+                  {item.savings ? (
+                    <p className="mt-1 text-xs text-muted-foreground">{item.savings}</p>
+                  ) : null}
+                </CardContent>
+
+                <CardContent className="flex-1 pb-3">
+                  <ul className="space-y-2.5">
                     {item.features.map((feature) => (
-                      <li key={feature} className="flex gap-2">
-                        <Check className="mt-0.5 size-4 text-muted-foreground" />
+                      <li key={feature} className="flex items-start gap-2.5 text-sm">
+                        <Check className={[
+                          "mt-0.5 size-4 shrink-0",
+                          item.featured ? "text-primary" : "text-muted-foreground",
+                        ].join(" ")} />
                         <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
+                </CardContent>
 
+                <CardContent className="pt-0">
                   <Button
-                    className="w-full"
+                    className={[
+                      "w-full",
+                      item.featured
+                        ? "shadow-[0_0_20px_theme(colors.primary/25%)] hover:shadow-[0_0_28px_theme(colors.primary/40%)]"
+                        : "",
+                    ].join(" ")}
+                    variant={item.featured ? "default" : "outline"}
                     onClick={() => startCheckout(item.plan)}
                     disabled={loadingPlan !== null}
                   >
@@ -249,31 +242,36 @@ export default function PricingPage() {
                     ) : (
                       <CreditCard className="size-4" />
                     )}
-                    {loadingPlan === item.plan ? "Opening..." : "Pay with Razorpay"}
+                    {loadingPlan === item.plan ? "Opening…" : "Pay with Dodo"}
                   </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          <Card className="mt-4 rounded-lg">
-            <CardHeader>
-              <CardTitle>Credit Pack</CardTitle>
-              <CardDescription>
-                Add 20 extra generations to any active tier.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="text-2xl font-semibold">INR 199</div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  One-time purchase, consumed after monthly quota.
+          {/* Credit pack */}
+          <Card className="mt-4 rounded-xl border-border/60 bg-card/80">
+            <CardContent className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <PackagePlus className="size-5" />
+                </div>
+                <div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold">$7.99</span>
+                    <span className="text-sm text-muted-foreground">one-time</span>
+                  </div>
+                  <p className="text-sm font-medium">Credit Pack — 20 extra generations</p>
+                  <p className="text-xs text-muted-foreground">
+                    Add to any active tier. Consumed after your monthly quota.
+                  </p>
                 </div>
               </div>
               <Button
                 variant="outline"
                 onClick={() => startCheckout("credit_pack")}
                 disabled={loadingPlan !== null}
+                className="shrink-0"
               >
                 {loadingPlan === "credit_pack" ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -288,34 +286,4 @@ export default function PricingPage() {
       </div>
     </main>
   );
-}
-
-function loadRazorpayScript() {
-  if (window.Razorpay) {
-    return Promise.resolve();
-  }
-
-  return new Promise<void>((resolve, reject) => {
-    const existingScript = document.querySelector<HTMLScriptElement>(
-      'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
-    );
-
-    if (existingScript) {
-      existingScript.addEventListener("load", () => resolve(), { once: true });
-      existingScript.addEventListener(
-        "error",
-        () => reject(new Error("Could not load Razorpay checkout.")),
-        { once: true }
-      );
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () =>
-      reject(new Error("Could not load Razorpay checkout."));
-    document.body.appendChild(script);
-  });
 }

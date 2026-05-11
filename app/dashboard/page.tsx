@@ -4,6 +4,7 @@ import {
   CreditCard,
   Download,
   FileArchive,
+  Hammer,
   LibraryBig,
   PackageCheck,
   Store,
@@ -57,17 +58,25 @@ export default async function DashboardPage({
   );
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between border-b pb-4">
-          <Link href="/" className="text-lg font-semibold">
-            Chisel
+    <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 right-0 h-[400px] w-[600px] rounded-full bg-primary/4 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+        {/* Header */}
+        <header className="flex items-center justify-between border-b border-border/60 pb-4">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/40%)]">
+              <Hammer className="size-4" />
+            </div>
+            <span className="text-base font-semibold tracking-tight">Chisel</span>
           </Link>
-          <nav className="flex items-center gap-2">
-            <Button variant="ghost" asChild>
+          <nav className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
               <Link href="/marketplace">Marketplace</Link>
             </Button>
-            <Button variant="outline" asChild>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
               <Link href="/pricing">Pricing</Link>
             </Button>
           </nav>
@@ -75,25 +84,27 @@ export default async function DashboardPage({
 
         <section className="py-8">
           {params.payment === "success" ? (
-            <div className="mb-5 rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-              Payment received. Your account will update after Razorpay confirms
-              the webhook.
+            <div className="mb-5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary/80">
+              Payment received. Your account will update after Dodo Payments confirms the webhook.
             </div>
           ) : null}
 
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          {/* Page header */}
+          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <Badge variant="outline" className="mb-3 capitalize">
+              <Badge
+                variant="outline"
+                className="mb-3 capitalize border-primary/30 bg-primary/5 text-primary text-xs"
+              >
                 {activeTier}
               </Badge>
-              <h1 className="text-3xl font-semibold tracking-normal sm:text-4xl">
-                Dashboard
-              </h1>
-              <p className="mt-3 text-base leading-7 text-muted-foreground">
-                {accountEmail}
-              </p>
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Dashboard</h1>
+              <p className="mt-2 text-sm text-muted-foreground">{accountEmail}</p>
             </div>
-            <Button asChild>
+            <Button
+              asChild
+              className="shadow-[0_0_20px_theme(colors.primary/20%)] hover:shadow-[0_0_28px_theme(colors.primary/35%)] transition-shadow"
+            >
               <Link href="/">
                 <PackageCheck className="size-4" />
                 Generate skill
@@ -101,11 +112,13 @@ export default async function DashboardPage({
             </Button>
           </div>
 
-          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Metrics */}
+          <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               icon={<FileArchive className="size-4" />}
               label="Generated"
               value={dashboard.skills.length}
+              accent
             />
             <MetricCard
               icon={<Calendar className="size-4" />}
@@ -124,22 +137,23 @@ export default async function DashboardPage({
             />
           </div>
 
+          {/* Content grid */}
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-            <Card className="rounded-lg">
+            {/* Generation history */}
+            <Card className="rounded-xl border-border/60 bg-card/80">
               <CardHeader>
                 <CardTitle>Generation History</CardTitle>
                 <CardDescription>
-                  Generated skills are stored privately and can be downloaded
-                  again from here.
+                  Generated skills are stored privately and can be downloaded again from here.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {dashboard.skills.length > 0 ? (
-                  <div className="divide-y rounded-md border">
+                  <div className="divide-y divide-border/50 rounded-lg border border-border/50 overflow-hidden">
                     {dashboard.skills.map((skill) => (
                       <div
                         key={skill.id}
-                        className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between"
+                        className="flex flex-col gap-3 p-4 transition-colors hover:bg-muted/30 md:flex-row md:items-center md:justify-between"
                       >
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -148,10 +162,10 @@ export default async function DashboardPage({
                             </h2>
                             <StructureBadges structure={skill.structure} />
                           </div>
-                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                             {skill.description}
                           </p>
-                          <p className="mt-2 text-xs text-muted-foreground">
+                          <p className="mt-1.5 text-xs text-muted-foreground/60">
                             {formatDate(skill.created_at)}
                           </p>
                         </div>
@@ -160,11 +174,11 @@ export default async function DashboardPage({
                             <PublishSkillDialog skill={skill} />
                           ) : null}
                           {isPro && publishedSkillIds.has(skill.id) ? (
-                            <Badge variant="secondary">Published</Badge>
+                            <Badge variant="secondary" className="text-xs">Published</Badge>
                           ) : null}
                           <Button variant="outline" size="sm" asChild>
                             <a href={`/api/dashboard/skills/${skill.id}/download`}>
-                              <Download className="size-4" />
+                              <Download className="size-3.5" />
                               Download
                             </a>
                           </Button>
@@ -184,7 +198,8 @@ export default async function DashboardPage({
               </CardContent>
             </Card>
 
-            <Card className="rounded-lg">
+            {/* Marketplace publishing */}
+            <Card className="rounded-xl border-border/60 bg-card/80">
               <CardHeader>
                 <CardTitle>Marketplace Publishing</CardTitle>
                 <CardDescription>
@@ -196,31 +211,34 @@ export default async function DashboardPage({
                   dashboard.publishedSkills.length > 0 ? (
                     <div className="space-y-3">
                       {dashboard.publishedSkills.map((skill) => (
-                        <div key={skill.id} className="rounded-md border p-4">
+                        <div
+                          key={skill.id}
+                          className="rounded-lg border border-border/50 p-4 transition-colors hover:bg-muted/30"
+                        >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <h2 className="truncate text-sm font-medium">
                                 {skill.name}
                               </h2>
-                              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                                 {skill.description}
                               </p>
                             </div>
-                            <Badge variant="secondary">
-                              {skill.download_count} downloads
+                            <Badge variant="secondary" className="shrink-0 text-xs">
+                              {skill.download_count} dl
                             </Badge>
                           </div>
-                          <div className="mt-3 flex flex-wrap gap-2">
+                          <div className="mt-3 flex flex-wrap gap-1.5">
                             {skill.category ? (
-                              <Badge variant="outline">{skill.category}</Badge>
+                              <Badge variant="outline" className="text-xs">{skill.category}</Badge>
                             ) : null}
                             {(skill.tags ?? []).slice(0, 4).map((tag) => (
-                              <Badge key={tag} variant="outline">
+                              <Badge key={tag} variant="outline" className="text-xs">
                                 {tag}
                               </Badge>
                             ))}
                           </div>
-                          <p className="mt-3 text-xs text-muted-foreground">
+                          <p className="mt-3 text-xs text-muted-foreground/60">
                             Published {formatDate(skill.published_at)}
                           </p>
                         </div>
@@ -255,18 +273,23 @@ function MetricCard({
   icon,
   label,
   value,
+  accent,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number;
+  accent?: boolean;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="mb-3 flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
+    <div className="rounded-xl border border-border/60 bg-card/80 p-4">
+      <div className={[
+        "mb-3 flex size-9 items-center justify-center rounded-lg",
+        accent ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
+      ].join(" ")}>
         {icon}
       </div>
-      <div className="text-2xl font-semibold">{value}</div>
-      <div className="mt-1 text-sm text-muted-foreground">{label}</div>
+      <div className="text-2xl font-bold">{value}</div>
+      <div className="mt-1 text-xs text-muted-foreground">{label}</div>
     </div>
   );
 }
@@ -287,11 +310,11 @@ function StructureBadges({
   ].filter(Boolean);
 
   if (labels.length === 0) {
-    return <Badge variant="outline">SKILL.md</Badge>;
+    return <Badge variant="outline" className="text-xs">SKILL.md</Badge>;
   }
 
   return labels.map((label) => (
-    <Badge key={label} variant="outline">
+    <Badge key={label} variant="outline" className="text-xs">
       {label}
     </Badge>
   ));
@@ -311,12 +334,12 @@ function EmptyState({
   actionLabel?: string;
 }) {
   return (
-    <div className="flex min-h-48 flex-col items-center justify-center rounded-md border border-dashed px-4 py-8 text-center">
-      <div className="mb-3 flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+    <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-border/50 px-4 py-8 text-center">
+      <div className="mb-3 flex size-11 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
         {icon}
       </div>
       <h2 className="text-sm font-medium">{title}</h2>
-      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+      <p className="mt-1.5 max-w-sm text-xs text-muted-foreground">
         {description}
       </p>
       {actionHref && actionLabel ? (

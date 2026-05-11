@@ -30,7 +30,7 @@ const complexityOptions: Array<{
   {
     value: "full",
     label: "Full",
-    description: "More complete guidance for broad workflows.",
+    description: "Complete guidance for broad workflows.",
   },
 ];
 
@@ -48,7 +48,7 @@ export function DescriptionInput({
         value={description}
         onChange={(event) => onDescriptionChange(event.target.value)}
         placeholder="Example: A skill that helps review PostgreSQL migrations for locking risks, unsafe defaults, and rollback issues."
-        className="min-h-44 resize-none text-sm leading-6"
+        className="min-h-44 resize-none text-sm leading-6 bg-background/50 border-border/60 placeholder:text-muted-foreground/50 focus-visible:border-primary/50 focus-visible:ring-primary/20"
         maxLength={4000}
       />
 
@@ -64,21 +64,19 @@ export function DescriptionInput({
             type="button"
             onClick={() => onComplexityChange(option.value)}
             className={[
-              "rounded-md border p-3 text-left transition-colors",
+              "rounded-lg border p-3 text-left transition-all duration-150",
               complexity === option.value
-                ? "border-primary bg-primary text-primary-foreground"
-                : "bg-background hover:bg-accent",
+                ? "border-primary/60 bg-primary/10 text-foreground shadow-[inset_0_0_0_1px_theme(colors.primary/30%)]"
+                : "border-border/50 bg-background/40 hover:border-border hover:bg-muted/50 text-muted-foreground hover:text-foreground",
             ].join(" ")}
           >
-            <span className="block text-sm font-medium">{option.label}</span>
-            <span
-              className={[
-                "mt-1 block text-xs leading-5",
-                complexity === option.value
-                  ? "text-primary-foreground/80"
-                  : "text-muted-foreground",
-              ].join(" ")}
-            >
+            <span className={[
+              "block text-sm font-medium",
+              complexity === option.value ? "text-primary" : "",
+            ].join(" ")}>
+              {option.label}
+            </span>
+            <span className="mt-1 block text-xs leading-5 opacity-70">
               {option.description}
             </span>
           </button>

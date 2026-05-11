@@ -8,7 +8,6 @@ import { DescriptionInput } from "@/components/generator/DescriptionInput";
 import { downloadSkill } from "@/components/generator/DownloadButton";
 import { OptionsPanel } from "@/components/generator/OptionsPanel";
 import { PreviewPane } from "@/components/generator/PreviewPane";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -109,54 +108,73 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between border-b pb-4">
+    <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      {/* Ambient background glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[600px] w-[900px] rounded-full bg-primary/5 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+        {/* Header */}
+        <header className="flex items-center justify-between border-b border-border/60 pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/40%)]">
               <Hammer className="size-4" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold leading-none">Chisel</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Generate installable Claude Code skills.
+              <span className="text-base font-semibold tracking-tight">Chisel</span>
+              <p className="text-xs text-muted-foreground leading-none mt-0.5">
+                Claude Code skill generator
               </p>
             </div>
           </div>
-          <nav className="hidden items-center gap-2 sm:flex">
-            <Button variant="ghost" asChild>
+          <nav className="hidden items-center gap-1 sm:flex">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
               <Link href="/marketplace">Marketplace</Link>
             </Button>
-            <Button variant="outline" asChild>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
               <Link href="/pricing">Pricing</Link>
             </Button>
-            <Button variant="ghost" asChild>
+            <Button size="sm" className="ml-1" asChild>
               <Link href="/sign-in">Sign in</Link>
             </Button>
           </nav>
         </header>
 
-        <section className="grid flex-1 gap-6 py-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)]">
-          <div className="flex flex-col gap-4">
+        {/* Main content */}
+        <section className="grid flex-1 gap-6 py-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)]">
+          <div className="flex flex-col gap-6">
+            {/* Hero */}
             <div>
-              <Badge variant="outline" className="mb-3">
-                Trial required
-              </Badge>
-              <h2 className="max-w-2xl text-3xl font-semibold tracking-normal sm:text-4xl">
-                Describe a workflow. Download a Claude Code skill.
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+                <span className="size-1.5 rounded-full bg-primary animate-pulse" />
+                {requiresTrial ? "Trial required to generate" : "Ready to generate"}
+              </div>
+              <h2 className="max-w-xl text-3xl font-bold tracking-tight sm:text-4xl leading-tight">
+                Describe a workflow.{" "}
+                <span className="bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
+                  Download a skill.
+                </span>
               </h2>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-                Chisel creates a valid `SKILL.md` and packages it as a `.skill`
-                zip that you can install directly.
+              <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
+                Chisel builds a valid{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs text-foreground/80">
+                  SKILL.md
+                </code>{" "}
+                and packages it as a{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs text-foreground/80">
+                  .skill
+                </code>{" "}
+                zip you can install directly in Claude Code.
               </p>
             </div>
 
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle>Skill Brief</CardTitle>
-                <CardDescription>
-                  Explain what the skill should help Claude Code do and when it
-                  should be used.
+            {/* Generator card */}
+            <Card className="rounded-xl border-border/60 bg-card/80 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">Skill Brief</CardTitle>
+                <CardDescription className="text-sm">
+                  Explain what the skill should help Claude Code do and when it should be used.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -174,14 +192,13 @@ export default function Home() {
                 />
 
                 {requiresTrial ? (
-                  <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                    Start a 7-day Creator trial to generate skills. Free
-                    accounts cannot generate.
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-primary/80">
+                    Start a 7-day Creator trial to generate skills. Free accounts cannot generate.
                   </div>
                 ) : null}
 
                 {error ? (
-                  <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
                     {error}
                   </div>
                 ) : null}
@@ -189,7 +206,7 @@ export default function Home() {
                 <Button
                   type="button"
                   size="lg"
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto shadow-[0_0_20px_theme(colors.primary/25%)] hover:shadow-[0_0_28px_theme(colors.primary/40%)] transition-shadow"
                   onClick={handleGenerate}
                   disabled={!canGenerate}
                 >
@@ -198,7 +215,7 @@ export default function Home() {
                   ) : (
                     <Sparkles className="size-4" />
                   )}
-                  {isGenerating ? "Chiseling..." : "Chisel It"}
+                  {isGenerating ? "Chiseling…" : "Chisel It"}
                 </Button>
               </CardContent>
             </Card>
@@ -213,8 +230,7 @@ export default function Home() {
           <DialogHeader>
             <DialogTitle>Generation limit reached</DialogTitle>
             <DialogDescription>
-              Sign up to start a 7-day Creator trial and continue generating
-              skills with scripts, references, and assets.
+              Sign up to start a 7-day Creator trial and continue generating skills with scripts, references, and assets.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

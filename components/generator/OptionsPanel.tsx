@@ -29,35 +29,37 @@ export function OptionsPanel({
   }
 
   return (
-    <div className="grid gap-2 rounded-md border bg-muted/30 p-3 text-sm sm:grid-cols-3">
-      {options.map((option) => (
-        <label
-          key={option.key}
-          title={
-            canUseAdvanced
-              ? option.label
-              : "Advanced folders unlock during trial and paid tiers."
-          }
-          className={[
-            "flex min-h-10 items-center justify-between gap-2 rounded-md bg-background px-3 py-2",
-            canUseAdvanced
-              ? "cursor-pointer text-foreground"
-              : "cursor-not-allowed text-muted-foreground",
-          ].join(" ")}
-        >
-          <span>{option.label}</span>
-          <span className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="size-4 accent-current disabled:cursor-not-allowed"
-              checked={include[option.key]}
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-muted-foreground">Include folders</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => {
+          const active = include[option.key];
+          return (
+            <button
+              key={option.key}
+              type="button"
               disabled={!canUseAdvanced}
-              onChange={(event) => updateOption(option.key, event.target.checked)}
-            />
-            {canUseAdvanced ? null : <Lock className="size-3.5" />}
-          </span>
-        </label>
-      ))}
+              onClick={() => canUseAdvanced && updateOption(option.key, !active)}
+              title={
+                canUseAdvanced
+                  ? option.label
+                  : "Advanced folders unlock during trial and paid tiers."
+              }
+              className={[
+                "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 font-mono text-xs transition-all duration-150",
+                canUseAdvanced
+                  ? active
+                    ? "border-primary/60 bg-primary/10 text-primary"
+                    : "border-border/50 bg-background/40 text-muted-foreground hover:border-border hover:text-foreground cursor-pointer"
+                  : "border-border/30 bg-muted/20 text-muted-foreground/40 cursor-not-allowed",
+              ].join(" ")}
+            >
+              {!canUseAdvanced && <Lock className="size-3 opacity-50" />}
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

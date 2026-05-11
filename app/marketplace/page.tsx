@@ -37,39 +37,48 @@ export default async function MarketplacePage({
   const totalPages = Math.max(1, Math.ceil(marketplace.total / marketplace.pageSize));
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between border-b pb-4">
+    <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[500px] w-[700px] rounded-full bg-primary/4 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+        {/* Header */}
+        <header className="flex items-center justify-between border-b border-border/60 pb-4">
           <Link href="/" className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/40%)]">
               <Hammer className="size-4" />
             </div>
-            <span className="text-lg font-semibold">Chisel</span>
+            <span className="text-base font-semibold tracking-tight">Chisel</span>
           </Link>
-          <nav className="flex items-center gap-2">
-            <Button variant="ghost" asChild>
+          <nav className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
               <Link href="/dashboard">Dashboard</Link>
             </Button>
-            <Button variant="outline" asChild>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
               <Link href="/pricing">Pricing</Link>
             </Button>
           </nav>
         </header>
 
         <section className="py-8">
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          {/* Page header */}
+          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <div className="mb-3 flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <div className="mb-3 flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Store className="size-5" />
               </div>
-              <h1 className="text-3xl font-semibold tracking-normal sm:text-4xl">
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
                 Marketplace
               </h1>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
+              <p className="mt-2 max-w-lg text-sm text-muted-foreground">
                 Browse published Claude Code skills from Chisel creators.
               </p>
             </div>
-            <Button asChild>
+            <Button
+              asChild
+              className="shadow-[0_0_20px_theme(colors.primary/20%)] hover:shadow-[0_0_28px_theme(colors.primary/35%)] transition-shadow"
+            >
               <Link href="/dashboard">Publish a skill</Link>
             </Button>
           </div>
@@ -89,17 +98,19 @@ export default async function MarketplacePage({
               ))}
             </div>
           ) : (
-            <div className="mt-6 flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed px-4 text-center">
-              <Store className="mb-3 size-8 text-muted-foreground" />
+            <div className="mt-6 flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed border-border/50 px-4 text-center">
+              <div className="mb-3 flex size-12 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
+                <Store className="size-6" />
+              </div>
               <h2 className="text-sm font-medium">No skills found</h2>
-              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              <p className="mt-1 max-w-sm text-xs text-muted-foreground">
                 Try a different category or tag.
               </p>
             </div>
           )}
 
           {totalPages > 1 ? (
-            <div className="mt-6 flex items-center justify-between">
+            <div className="mt-8 flex items-center justify-between">
               <Button
                 variant="outline"
                 size="sm"
@@ -118,7 +129,7 @@ export default async function MarketplacePage({
                   </>
                 )}
               </Button>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 Page {marketplace.page} of {totalPages}
               </span>
               <Button
