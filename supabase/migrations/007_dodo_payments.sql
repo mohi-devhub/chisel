@@ -1,3 +1,29 @@
+alter table payments
+  add column if not exists provider text not null default 'dodo',
+  add column if not exists dodo_checkout_session_id text,
+  add column if not exists dodo_payment_id text;
+
+do $$
+begin
+  if exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'payments'
+       and column_name = 'razorpay_order_id'
+  ) then
+    alter table payments alter column razorpay_order_id drop not null;
+  end if;
+end $$;
+
+create unique index if not exists payments_dodo_checkout_session_id_key
+  on payments(dodo_checkout_session_id)
+  where dodo_checkout_session_id is not null;
+
+create unique index if not exists payments_dodo_payment_id_key
+  on payments(dodo_payment_id)
+  where dodo_payment_id is not null;
+
 create or replace function capture_dodo_payment(
   p_checkout_session_id text,
   p_payment_id           text

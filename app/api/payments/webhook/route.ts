@@ -1,56 +1,72 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 
-import { verifyWebhookSignature } from "@/lib/razorpay";
+import { verifyDodoWebhook } from "@/lib/dodo-payments";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-interface RazorpayWebhookPayload {
-  event?: string;
-  payload?: {
-    payment?: {
-      entity?: {
-        id?: string;
-        order_id?: string;
-        status?: string;
-      };
-    };
-  };
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
-    const signature = request.headers.get("x-razorpay-signature");
+    const webhookHeaders = {
+      "webhook-id": request.headers.get("webhook-id") ?? "",
+      "webhook-signature": request.headers.get("webhook-signature") ?? "",
+      "webhook-timestamp": request.headers.get("webhook-timestamp") ?? "",
+    };
 
-    if (!signature || !verifyWebhookSignature(body, signature)) {
+    if (
+      !webhookHeaders["webhook-id"] ||
+      !webhookHeaders["webhook-signature"] ||
+      !webhookHeaders["webhook-timestamp"]
+    ) {
+      return NextResponse.json(
+        { error: "missing_webhook_headers" },
+        { status: 400 }
+      );
+    }
+
+    let event: ReturnType<typeof verifyDodoWebhook>;
+
+    try {
+      event = verifyDodoWebhook(body, webhookHeaders);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes("is not configured")
+      ) {
+        throw error;
+      }
+
       return NextResponse.json(
         { error: "invalid_signature" },
         { status: 400 }
       );
     }
 
-    const event = JSON.parse(body) as RazorpayWebhookPayload;
-
-    if (event.event !== "payment.captured") {
+    if (event.type !== "payment.succeeded") {
       return NextResponse.json({ received: true });
     }
 
-    const payment = event.payload?.payment?.entity;
-    const orderId = payment?.order_id;
-    const paymentId = payment?.id;
+    const payment = event.data;
 
-    if (!orderId || !paymentId) {
+    if (payment.payload_type !== "Payment") {
       return NextResponse.json(
         { error: "invalid_payload" },
         { status: 400 }
       );
     }
 
+    const checkoutSessionId = payment.checkout_session_id;
+    const paymentId = payment.payment_id;
+
+    if (!checkoutSessionId || !paymentId) {
+      return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+    }
+
     const supabase = createClient();
-    const { data, error } = await supabase.rpc("capture_payment", {
-      p_order_id: orderId,
+    const { data, error } = await supabase.rpc("capture_dodo_payment", {
+      p_checkout_session_id: checkoutSessionId,
       p_payment_id: paymentId,
     });
 

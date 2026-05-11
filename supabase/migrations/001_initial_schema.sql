@@ -45,12 +45,13 @@ create table anonymous_sessions (
   last_seen_at  timestamptz default now()
 );
 
--- Payments (Razorpay order + payment records)
+-- Payments (Dodo Payments checkout + payment records)
 create table payments (
   id                      uuid primary key default gen_random_uuid(),
   user_id                 text references users(id),
-  razorpay_order_id       text not null,
-  razorpay_payment_id     text,
+  provider                text not null default 'dodo',
+  dodo_checkout_session_id text,
+  dodo_payment_id         text,
   plan                    text not null,
   status                  text not null default 'pending',
   created_at              timestamptz default now()
