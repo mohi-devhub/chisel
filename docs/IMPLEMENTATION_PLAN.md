@@ -1,133 +1,209 @@
 # Chisel — Implementation Plan
 
-Ordered build sequence for Claude Code. Complete phases in order — each phase is independently shippable.
+Ordered build sequence. Each phase is independently shippable and builds on the last.
+
+**Current state entering this plan:**
+- Auth (Clerk), database (Supabase), skill generation, marketplace, dashboard, and payments are all built and working.
+- The pivot is: (1) repo scanner replaces skill generation as the hero feature, (2) marketplace expands to a full registry supporting CLAUDE.md templates, (3) team workspace is added, (4) OpenAI replaces Anthropic.
 
 ---
 
-## Phase 0 — Project Bootstrap
+## Phase 0 — Foundation Changes
 
-- [ ] Verify Node.js ≥ 22.2 (`node --version`) — required by razorpay SDK
-- [ ] `pnpm create next-app@16 chisel --typescript --tailwind --app`
-- [ ] Install dependencies (pinned):
-  ```
-  pnpm add @clerk/nextjs@7 @supabase/supabase-js@2 jszip@3 razorpay@2
-  pnpm add @anthropic-ai/sdk@0
-  ```
-  Note: JSZip ships its own types — no `@types/jszip` needed.
-- [ ] Set up shadcn/ui: `pnpm dlx shadcn@latest init`
-- [ ] Add components: button, input, textarea, card, badge, tabs, dialog
-- [ ] Create `.env.local` with all required keys (see ARCHITECTURE.md §10)
-- [ ] Set up Clerk: wrap `app/layout.tsx` with `<ClerkProvider>`
-- [ ] Create `middleware.ts` with Clerk route protection rules
-- [ ] Set up Supabase: create project, run schema migrations (all 5 tables)
-- [ ] Create two Supabase storage buckets: `chisel-skills` (private), `chisel-marketplace` (public)
+**Goal:** Swap AI provider, update pricing plans, migrate database schema for new product.
 
----
+### AI Provider Swap
+- [ ] Install OpenAI SDK: `pnpm add openai`
+- [ ] Remove `@anthropic-ai/sdk` dependency
+- [ ] Rewrite `lib/anthropic.ts` → `lib/openai.ts`:
+  - Keep same interface: `generateSkill(request) → GeneratedSkill`
+  - Use `openai.chat.completions.create` with `gpt-4o-mini`
+  - Keep retry logic (2 attempts), same prompt, same JSON parsing
+- [ ] Update all imports from `@/lib/anthropic` → `@/lib/openai`
+- [ ] Rename `ANTHROPIC_API_KEY` → `OPENAI_API_KEY` in `.env.local` and `.env.local.example`
+- [ ] Add `OPENAI_MODEL=gpt-4o-mini` to env
 
-## Phase 1 — Core Generation (No Auth)
+### Database Schema Migration
+- [ ] Apply migration `010_registry_items`:
+  - Create `registry_items` table (replaces `marketplace_listings`)
+  - Keep `marketplace_listings` as alias/view for backward compat during transition, or migrate data
+- [ ] Apply migration `011_organizations`:
+  - Create `organizations` table
+  - Create `org_members` table
+  - Create `org_items` table
+  - Add `org_id` column to `users`
+- [ ] Apply migration `012_anonymous_scan_quota`:
+  - Add `scan_count` column to `anonymous_sessions`
+- [ ] Apply migration `013_update_tiers`:
+  - Update `users.tier` check constraint to include `'solo'` | `'team_owner'` | `'team_member'`
+- [ ] Apply migration `014_rls_registry`:
+  - Enable RLS on new tables
+  - Add SELECT policy on `registry_items` for anon + authenticated
 
-**Goal:** Visitor can describe a skill, then sign up for a trial to generate and download a zip.
+### Storage
+- [ ] Create `chisel-registry` bucket (public, 10MB limit, `['application/zip','text/plain','text/markdown']`)
+- [ ] Create `chisel-workspace` bucket (private, 10MB limit)
+- [ ] Add public SELECT policy on `chisel-registry` storage objects
 
-- [x] `lib/anthropic.ts` — Claude API client, `buildPrompt()`, `generateSkill()`, JSON response parser with retry
-- [x] `lib/packaging.ts` — `packageSkill(generated) → Buffer` using JSZip
-- [x] `lib/fingerprint.ts` — `getFingerprint(req)` using IP + User-Agent hash
-- [x] `lib/quota.ts` — `checkQuota(fingerprint | userId)` → `{ allowed: boolean, remaining: number }`
-- [x] `app/api/generate/route.ts` — Full generation endpoint (fingerprint → quota check → Claude → validate → zip → upload → return binary)
-- [x] `components/generator/DescriptionInput.tsx` — Textarea with char counter
-- [x] `components/generator/PreviewPane.tsx` — Shows SKILL.md content after generation
-- [x] `components/generator/DownloadButton.tsx` — Triggers download of binary response
-- [x] `app/page.tsx` — Landing page with generator UI, generation counter display
+### Pricing Update
+- [ ] Update `lib/dodo-payments.ts`: replace `creator_monthly` / `pro_monthly` / `pro_annual` / `credit_pack` with `solo_monthly` / `team_monthly`
+- [ ] Update `app/pricing/page.tsx`: new two-plan layout (Solo $9/mo, Team $49/mo) + 14-day trial CTA
+- [ ] Update `app/api/payments/webhook/route.ts`: map `solo_monthly` → `tier = 'solo'`, `team_monthly` → create org + `tier = 'team_owner'`
+- [ ] Update trial duration: 7 days → 14 days in `lib/users.ts` and `app/api/webhooks/clerk/route.ts`
 
-**Test:** Attempt anonymous generation, verify sign-up gate. Sign up for trial, generate a skill, download zip, verify structure.
-
----
-
-## Phase 2 — Auth + Tier Enforcement
-
-**Goal:** Accounts, quota tied to user, pro gate on advanced output.
-
-- [x] `app/(auth)/sign-in/page.tsx` and `sign-up/page.tsx` — Clerk hosted pages
-- [x] Supabase `users` row creation on Clerk `user.created` webhook
-- [x] Update `app/api/generate/route.ts` — detect Clerk session, enforce tier gates server-side
-- [x] Anonymous → authenticated gen_count carry-over on sign-up (session cookie linkage; no free anonymous generations are allowed)
-- [x] `components/generator/OptionsPanel.tsx` — Scripts/References/Assets checkboxes (pro-gated with upgrade tooltip)
-- [x] Trial nudge shown inline before generation
-- [x] Upgrade prompt modal when anonymous/free user tries to generate
-- [x] On sign-up: set `trial_ends_at = now() + 7 days`, carry over anonymous gen_count
-- [x] Trial users treated as creator tier in quota and output logic
-
-**Test:** Try generating anonymously, see gate. Sign up, verify 7-day trial activates. Verify scripts checkbox blocked for free user at API level but accessible during trial.
+**Test:** Generate a skill using OpenAI. Verify response format unchanged. Verify pricing page shows correct plans.
 
 ---
 
-## Phase 3 — Payments (Razorpay)
+## Phase 1 — Repo Scanner
 
-**Goal:** Free users can upgrade to Creator or Pro; any user can buy a credit pack.
+**Goal:** Hero feature. User scans a GitHub repo and gets a generated `CLAUDE.md` + skill recommendations.
 
-- [x] `lib/razorpay.ts` — Razorpay SDK wrapper, `createOrder()`, `verifyWebhookSignature()`
-- [x] `app/api/payments/create-order/route.ts` — supports plans: `creator_monthly`, `pro_monthly`, `pro_annual`, `credit_pack`
-- [x] `app/api/payments/webhook/route.ts` — Signature verification; on `payment.captured`:
-  - `creator_monthly` → `users.tier = 'creator'`
-  - `pro_monthly` / `pro_annual` → `users.tier = 'pro'`
-  - `credit_pack` → `users.credits += 20`
-- [x] `app/pricing/page.tsx` — Three-column plan table (Creator / Pro / Pro Annual) + credit pack add-on section + Razorpay checkout trigger
-- [x] Frontend Razorpay checkout integration (load Razorpay.js, open checkout modal)
-- [x] Post-payment redirect → dashboard with success toast
+### GitHub Integration
+- [ ] `lib/github.ts`:
+  - `fetchRepoTree(owner, repo, branch?)` — calls GitHub trees API, returns filtered file list
+  - `fetchFileContent(owner, repo, path)` — base64 decodes file content
+  - `detectStack(manifests)` — infers stack tags from `package.json`, `pyproject.toml`, `go.mod`, etc.
+  - `buildRepoContext(owner, repo)` — orchestrates: fetch tree + key manifests + README + existing CLAUDE.md → returns `RepoContext`
+  - `parseGitHubUrl(url)` — validates and extracts `{ owner, repo, branch }` from a GitHub URL
 
-**Test:** Complete test payments for each plan type, verify correct `users.tier` and `users.credits` updates via webhook only (not frontend callback).
+### OpenAI Scanner Prompt
+- [ ] `lib/scanner.ts`:
+  - `buildScanPrompt(context: RepoContext)` — builds user message with file tree, manifest contents, detected stack
+  - `scanRepo(context: RepoContext)` → `{ claude_md: string, detected_stack: string[] }` — calls OpenAI with scan system prompt, validates output, retries once on failure
 
----
+### API Route
+- [ ] `app/api/scan/route.ts`:
+  1. Parse + validate GitHub URL from request body
+  2. Get fingerprint; check anonymous scan quota (max 1 scan for unauthenticated)
+  3. If authenticated: call `ensureUserRecord`, verify trial/subscription active
+  4. Call `buildRepoContext` → `scanRepo`
+  5. Fetch up to 5 registry items matching detected stack tags
+  6. Return `{ claude_md, detected_stack, recommended_skills }`
+  7. Store scan in `anonymous_sessions.scan_count` or user record (analytics)
 
-## Phase 4 — Dashboard
+### Frontend
+- [ ] Redesign `app/page.tsx` as the scanner landing:
+  - Hero: "Configure Claude Code for any project in 60 seconds"
+  - Input: GitHub URL field + "Scan" button
+  - Result: split pane — generated `CLAUDE.md` on right (editable `<textarea>`), recommended skills below
+  - Copy to clipboard + Download buttons
+  - Unauthenticated: show result for first scan, then sign-up gate
+- [ ] Loading state: skeleton / streaming feel while scanning
+- [ ] Error states: private repo, invalid URL, rate limit hit
 
-**Goal:** Authenticated users can see their history.
-
-- [x] `app/dashboard/page.tsx` — Auth-gated, shows:
-  - Generation history (list of skills with name, date, download link)
-  - Pro users: published marketplace skills + download counts
-- [x] `app/api/dashboard/skills/route.ts` — Fetch user's skills from Supabase
-- [x] Re-download endpoint: generate signed URL for previously generated skill zip
-
-**Test:** Generate 3 skills, sign in, verify history appears.
-
----
-
-## Phase 5 — Marketplace
-
-**Goal:** Public skill catalog, pro users can publish.
-
-- [x] `app/marketplace/page.tsx` — Grid of skill cards, filter by category/tags, sort
-- [x] `app/marketplace/[id]/page.tsx` — Skill detail: name, description, tags, author, SKILL.md preview, download button
-- [x] `app/api/marketplace/route.ts` — Paginated listing fetch with filters
-- [x] `app/api/marketplace/[id]/download/route.ts` — Increment download count + return signed URL
-- [x] `app/api/publish/route.ts` — Pro-only publish endpoint
-- [x] `components/marketplace/SkillCard.tsx`
-- [x] `components/marketplace/FilterBar.tsx`
-- [x] Publish flow in dashboard: "Publish to Marketplace" button on skill history items (pro only)
-
-**Test:** Publish a skill as pro user, find it on marketplace, download as anonymous user.
+**Test:** Scan `https://github.com/vercel/next.js`. Verify generated CLAUDE.md is specific to Next.js. Scan a Django repo. Scan a Go repo. Verify stack detection works.
 
 ---
 
-## Phase 6 — Polish & Launch Prep
+## Phase 2 — Registry
 
-- [ ] SEO: `metadata` exports on all pages
-- [ ] Loading states: skeleton cards on marketplace, spinner on generation
-- [ ] Error states: generation failure UI, network error handling
-- [ ] Rate limiting on `/api/generate`: max 10 req/min per IP (middleware or Vercel edge config)
-- [ ] Razorpay test → production key swap
-- [ ] Vercel deployment + environment variables
-- [ ] Supabase RLS policies audit
-- [ ] README.md
+**Goal:** Replace/expand marketplace into a full registry supporting both CLAUDE.md templates and skills.
+
+### Backend
+- [ ] `lib/registry.ts`:
+  - `getRegistryItems({ type, stack, category, sort, page })` — queries `registry_items`
+  - `getRegistryItem(id)` — single item with author info
+  - `publishRegistryItem({ authorId, type, name, description, tags, stack, content })` — uploads content to `chisel-registry` storage, inserts into `registry_items`
+  - `incrementInstallCount(id)` — atomic increment
+- [ ] `app/api/registry/route.ts` — paginated list with filters
+- [ ] `app/api/registry/[id]/route.ts` — single item fetch + preview content
+- [ ] `app/api/registry/[id]/download/route.ts` — increment count + signed URL
+- [ ] `app/api/registry/publish/route.ts` — publish template or skill (requires active subscription)
+
+### Frontend
+- [ ] `app/registry/page.tsx`:
+  - Two tabs: **Templates** and **Skills**
+  - Stack filter chips (Next.js, Django, Go, Rails, etc.) + text search + sort
+  - Grid of item cards
+- [ ] `app/registry/[id]/page.tsx`:
+  - Item detail: name, description, stack badges, install count, author
+  - For templates: rendered CLAUDE.md preview
+  - For skills: terminal-style SKILL.md preview (reuse existing `PreviewPane`)
+  - Download / Copy button
+- [ ] `components/registry/RegistryCard.tsx` — unified card for templates + skills
+- [ ] `components/registry/PublishDialog.tsx` — publish form (type selector, metadata, content upload/paste)
+
+### Migrate existing marketplace listings
+- [ ] Data migration: copy `marketplace_listings` rows into `registry_items` with `type = 'skill'`
+- [ ] Redirect `/marketplace` → `/registry` (Next.js permanent redirect in `next.config.ts`)
+
+**Test:** Publish a template. Browse registry filtered by "nextjs". Download a skill. Verify install count increments.
 
 ---
 
-## Definition of Done (MVP)
+## Phase 3 — Team Workspace
 
-- [ ] Anonymous user can generate a SKILL.md-only skill and download zip
-- [ ] Free tier blocks generation unless an active trial or paid tier is present
-- [ ] Pro tier unlocks unlimited + full structure
-- [ ] Razorpay payment upgrades tier via webhook (not frontend)
-- [ ] Marketplace shows published skills, anyone can download
-- [ ] Only pro users can publish to marketplace
-- [ ] All pro-only gates enforced server-side (not just UI)
+**Goal:** Team subscribers get a private shared config library.
+
+### Backend
+- [ ] `lib/workspace.ts`:
+  - `getOrg(userId)` — fetch org for user
+  - `getOrgItems(orgId)` — fetch workspace items
+  - `addOrgItem({ orgId, type, name, description, content })` — upload + insert
+  - `removeOrgItem(orgId, itemId)` — delete
+  - `inviteMember(orgId, email)` — create pending invite (v1: lookup by email in users table)
+  - `removeMember(orgId, userId)`
+- [ ] `app/api/workspace/route.ts` — GET workspace items
+- [ ] `app/api/workspace/items/route.ts` — POST add item, DELETE remove item
+- [ ] `app/api/workspace/members/route.ts` — GET members, POST invite, DELETE remove
+- [ ] Org creation in payment webhook: on `team_monthly` capture → `insert into organizations` + set user `tier = 'team_owner'` + insert into `org_members`
+
+### Frontend
+- [ ] `app/workspace/page.tsx`:
+  - Members list (owner can invite/remove)
+  - Templates tab + Skills tab (team-private items)
+  - Add item: upload or generate inline
+  - Pinned items shown first
+- [ ] Workspace item cards with pin/unpin + remove actions
+- [ ] Team invite UI: email input → sends invite (v1: direct lookup; v2: email invite flow)
+- [ ] Dashboard integration: show workspace summary card for team users
+
+**Test:** Upgrade to Team. Create org. Invite second user. Verify workspace items are shared. Remove member, verify access revoked.
+
+---
+
+## Phase 4 — Polish & Launch
+
+**Goal:** Production-ready UX and infrastructure.
+
+### Frontend polish
+- [ ] `app/generate/page.tsx` — move skill generator from homepage to dedicated `/generate` route
+- [ ] Update header nav: Home, Registry, Generate, Pricing, Dashboard
+- [ ] SEO: `metadata` exports on all pages with proper titles and descriptions
+- [ ] Loading skeletons on registry grid and workspace
+- [ ] Error boundary components for scan failures and generation failures
+- [ ] Mobile responsive audit: scanner, registry, workspace
+
+### Infrastructure
+- [ ] Rate limiting on `/api/scan`: 10 req/min per IP (Vercel edge config or upstash-ratelimit)
+- [ ] Rate limiting on `/api/generate`: 5 req/min per user
+- [ ] Vercel deployment: add all env vars
+- [ ] Set `DODO_PAYMENTS_ENVIRONMENT=live_mode` for production
+- [ ] Supabase: confirm RLS audit passes (re-run `get_advisors`)
+- [ ] GitHub API: add `User-Agent: chisel/1.0` header to all requests (required by GitHub)
+
+### Content
+- [ ] Seed registry with 10–15 hand-crafted templates for popular stacks:
+  - Next.js + TypeScript
+  - Next.js + Supabase
+  - Django + DRF
+  - FastAPI
+  - Go (standard layout)
+  - React (Vite)
+  - Rails
+  - Node.js + Express
+- [ ] Seed registry with 5–10 useful skills from existing marketplace
+
+---
+
+## Definition of Done (v2.0 Launch)
+
+- [ ] User can scan a public GitHub repo and get a valid, useful `CLAUDE.md` in < 60s
+- [ ] Registry has at least 10 community/seeded items browsable without login
+- [ ] Skill generation works via OpenAI (same quality as Anthropic path)
+- [ ] Solo plan: $9/mo via Dodo, 14-day trial, unlimited scans, 30 generations
+- [ ] Team plan: $49/mo via Dodo, team workspace, 5 seats, 200 generations shared
+- [ ] All tier gates enforced server-side
+- [ ] No Anthropic dependencies remaining in the codebase
+- [ ] Deployed to Vercel with all env vars set

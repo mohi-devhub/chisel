@@ -1,34 +1,44 @@
 # Chisel — Architecture Document
 
-**Version:** 1.0 (MVP)  
+**Version:** 2.0  
 
 ---
 
 ## 1. System Overview
 
-Chisel is a Next.js 16 (App Router) full-stack web application backed by Supabase (Postgres + Storage), authenticated via Clerk, and monetized via Razorpay. Skill generation is handled server-side via the Anthropic Claude API. Generated zip files are assembled server-side using JSZip and returned as a binary download.
+Chisel is a Next.js 16 (App Router) full-stack web application. The core features are:
+
+1. **Repo Scanner** — fetches a GitHub repo's structure, sends it to OpenAI (gpt-4o-mini), and returns a generated `CLAUDE.md` + recommended skills
+2. **Registry** — community hub for `CLAUDE.md` templates and `.skill` zips (expanded from the original marketplace)
+3. **Skill Generator** — generates `.skill` zips from plain-English descriptions via OpenAI
+4. **Team Workspace** — private shared config library for Team subscribers
 
 ```
 User Browser
     │
     ▼
 Next.js App (Vercel)
-    ├── /app              → Pages & UI
-    ├── /app/api          → API Routes (Edge/Node)
-    │       ├── /generate     → Core skill generation
-    │       ├── /publish      → Marketplace publish
-    │       └── /webhook      → Razorpay payment webhook
+    ├── /app                  → Pages & UI
+    ├── /app/api              → API Routes (Node.js runtime)
+    │       ├── /scan             → Repo scanner
+    │       ├── /generate         → Skill generation
+    │       ├── /registry         → Registry CRUD
+    │       ├── /workspace        → Team workspace
+    │       ├── /dashboard        → User dashboard data
+    │       ├── /payments         → Checkout + webhook
+    │       └── /webhooks/clerk   → User creation webhook
     │
-    ├── Clerk             → Auth (session, JWT)
-    ├── Supabase Client   → DB reads (skills, users, marketplace)
-    └── Razorpay SDK      → Payment order creation
+    ├── Clerk                 → Auth (session, JWT)
+    ├── Supabase Client       → DB reads/writes
+    └── Dodo Payments SDK     → Checkout session creation
          │
          ▼
     External Services
-    ├── Anthropic Claude API   → Skill content generation
-    ├── Supabase Postgres      → Users, skills, marketplace, usage
-    ├── Supabase Storage       → Stored .skill zip files
-    └── Razorpay               → Payment processing
+    ├── OpenAI API (gpt-4o-mini)  → Repo scanning + skill generation
+    ├── GitHub API (unauthenticated) → Fetch public repo structure
+    ├── Supabase PostgreSQL    → Users, skills, registry, teams
+    ├── Supabase Storage       → Stored .skill zips + templates
+    └── Dodo Payments          → Subscription processing
 ```
 
 ---
@@ -39,18 +49,22 @@ Next.js App (Vercel)
 |---|---|---|
 | Framework | Next.js (App Router) | 16.2.4 |
 | Language | TypeScript | 6.0.3 |
-| Styling | Tailwind CSS | 4.2.4 |
-| Auth | Clerk (`@clerk/nextjs`) | 7.2.5 |
-| Database | Supabase (PostgreSQL) | `@supabase/supabase-js` 2.104.1 |
-| File Storage | Supabase Storage | (bundled with supabase-js) |
-| AI | Anthropic Claude API (`claude-sonnet-4-6`) | `@anthropic-ai/sdk` 0.90.0 |
+| Styling | Tailwind CSS | 4.x |
+| Auth | Clerk (`@clerk/nextjs`) | 7.x |
+| Database | Supabase (PostgreSQL) | `@supabase/supabase-js` 2.x |
+| File Storage | Supabase Storage | (bundled) |
+| AI | OpenAI API (`gpt-4o-mini`) | `openai` SDK |
 | Zip Generation | JSZip (server-side) | 3.10.1 |
-| Payments | Razorpay | 2.9.6 |
+| Payments | Dodo Payments + Standard Webhooks | `dodopayments` 2.x |
 | Deployment | Vercel | — |
-| Package Manager | pnpm | 10.33.2 |
-| Runtime | Node.js | ≥ 22.2 (required by razorpay) |
+| Package Manager | pnpm | 10.x |
+| Runtime | Node.js | ≥ 22.2 |
 
-> **JSZip note:** JSZip 3.10.1 is stable but no longer actively developed. It is safe for _creating_ zips (our use case) — the security concern only applies when _parsing_ untrusted zip archives, which Chisel does not do.
+**AI provider rationale:** OpenAI `gpt-4o-mini` is used instead of Anthropic Claude because:
+- Cost: ~$0.005–0.008 per generation vs ~$0.18+ for Claude Sonnet
+- $50 OpenAI credit covers ~6,000–10,000 operations before needing to top up
+- Quality is sufficient for structured JSON output (CLAUDE.md generation, skill generation)
+- Model is configurable via `OPENAI_MODEL` env var
 
 ---
 
@@ -59,327 +73,400 @@ Next.js App (Vercel)
 ### 3.1 `users`
 ```sql
 create table users (
-  id                  uuid primary key,           -- matches Clerk user ID
-  email               text not null unique,
-  tier                text not null default 'free', -- 'free' | 'creator' | 'pro'
-  gen_count           integer not null default 0,  -- lifetime generation count (display/analytics)
-  monthly_gen_count   integer not null default 0,  -- resets each billing cycle
-  monthly_reset_at    timestamptz default now(),   -- when monthly_gen_count was last reset
-  credits             integer not null default 0,  -- one-time credit pack balance
-  trial_ends_at       timestamptz,                 -- set to now()+7 days on signup; null if no trial
-  created_at          timestamptz default now()
+  id                text primary key,            -- Clerk user ID (e.g. "user_...")
+  email             text not null unique,
+  tier              text not null default 'free', -- 'free' | 'solo' | 'team_owner' | 'team_member'
+  gen_count         integer not null default 0,  -- lifetime generation count
+  monthly_gen_count integer not null default 0,
+  monthly_reset_at  timestamptz default now(),
+  trial_ends_at     timestamptz,                 -- now()+14 days on signup
+  org_id            uuid references organizations(id), -- null if no team
+  created_at        timestamptz default now()
 );
 ```
+
+> **Tier values:** `free` (0 scans after trial), `solo` ($9/mo), `team_owner` (owns Team workspace), `team_member` (invited to a Team workspace).
 
 ### 3.2 `skills`
 ```sql
 create table skills (
   id            uuid primary key default gen_random_uuid(),
-  user_id       uuid references users(id),   -- null for anonymous
+  user_id       text references users(id),
   name          text not null,
   description   text not null,
-  storage_path  text not null,               -- path in Supabase Storage
-  structure     jsonb,                       -- {has_scripts, has_references, has_assets}
+  storage_path  text not null,
+  structure     jsonb,                          -- {has_scripts, has_references, has_assets}
   created_at    timestamptz default now()
 );
 ```
 
-### 3.3 `marketplace_listings`
+### 3.3 `registry_items`
+Replaces and expands `marketplace_listings`. Holds both CLAUDE.md templates and skills.
+
 ```sql
-create table marketplace_listings (
+create table registry_items (
+  id             uuid primary key default gen_random_uuid(),
+  author_id      text references users(id) not null,
+  type           text not null,               -- 'template' | 'skill'
+  name           text not null,
+  description    text not null,
+  tags           text[],
+  category       text,
+  stack          text[],                      -- detected/declared stack tags e.g. ['nextjs','typescript']
+  storage_path   text not null,               -- path in chisel-registry bucket
+  install_count  integer not null default 0,
+  published_at   timestamptz default now(),
+  -- for skills only
+  skill_id       uuid references skills(id)
+);
+```
+
+### 3.4 `organizations`
+```sql
+create table organizations (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  owner_id    text references users(id) not null,
+  created_at  timestamptz default now()
+);
+```
+
+### 3.5 `org_members`
+```sql
+create table org_members (
+  id         uuid primary key default gen_random_uuid(),
+  org_id     uuid references organizations(id) not null,
+  user_id    text references users(id) not null,
+  role       text not null default 'member',  -- 'owner' | 'member'
+  joined_at  timestamptz default now(),
+  unique(org_id, user_id)
+);
+```
+
+### 3.6 `org_items`
+Workspace-private registry items (team templates and skills).
+
+```sql
+create table org_items (
   id              uuid primary key default gen_random_uuid(),
-  skill_id        uuid references skills(id),
-  author_id       uuid references users(id),
+  org_id          uuid references organizations(id) not null,
+  registry_item_id uuid references registry_items(id), -- null if private-only
   name            text not null,
   description     text not null,
-  tags            text[],
-  category        text,
-  download_count  integer default 0,
-  storage_path    text not null,             -- public-accessible path
-  published_at    timestamptz default now()
-);
-```
-
-### 3.4 `anonymous_sessions`
-```sql
-create table anonymous_sessions (
-  id            uuid primary key default gen_random_uuid(),
-  fingerprint   text not null,              -- IP + user-agent hash
-  gen_count     integer not null default 0,
-  created_at    timestamptz default now(),
-  last_seen_at  timestamptz default now()
-);
-```
-
-### 3.5 `payments`
-```sql
-create table payments (
-  id              uuid primary key default gen_random_uuid(),
-  user_id         uuid references users(id),
-  razorpay_order_id   text not null,
-  razorpay_payment_id text,
-  plan            text not null,
-    -- 'creator_monthly' | 'pro_monthly' | 'pro_annual' | 'credit_pack'
-  status          text not null default 'pending', -- 'pending' | 'paid' | 'failed'
+  type            text not null,              -- 'template' | 'skill'
+  storage_path    text not null,
+  pinned          boolean not null default false,
   created_at      timestamptz default now()
 );
 ```
 
+### 3.7 `anonymous_sessions`
+```sql
+create table anonymous_sessions (
+  id           uuid primary key default gen_random_uuid(),
+  fingerprint  text not null unique,
+  scan_count   integer not null default 0,    -- free: 1 scan allowed
+  created_at   timestamptz default now(),
+  last_seen_at timestamptz default now()
+);
+```
+
+### 3.8 `payments`
+```sql
+create table payments (
+  id                       uuid primary key default gen_random_uuid(),
+  user_id                  text references users(id),
+  provider                 text not null default 'dodo',
+  dodo_checkout_session_id text,
+  dodo_payment_id          text,
+  plan                     text not null,     -- 'solo_monthly' | 'team_monthly'
+  status                   text not null default 'pending',
+  created_at               timestamptz default now()
+);
+```
+
 ---
 
-## 4. API Routes
+## 4. Storage Layout (Supabase Storage)
+
+```
+Bucket: chisel-skills (private)
+  └── skills/{user_id}/{uuid}.skill       ← user-generated skill zips
+
+Bucket: chisel-registry (public)
+  └── templates/{item_id}.md              ← CLAUDE.md template files
+  └── skills/{item_id}.skill              ← published skill zips
+
+Bucket: chisel-workspace (private)
+  └── orgs/{org_id}/{item_id}             ← team-private templates and skills
+```
+
+---
+
+## 5. API Routes
+
+### `POST /api/scan`
+Core repo scanner endpoint.
+
+**Request:**
+```json
+{
+  "repo_url": "https://github.com/owner/repo",
+  "branch": "main"
+}
+```
+
+**Server logic:**
+1. Validate URL is a GitHub repo
+2. Check quota: anonymous gets 1 scan (fingerprint-gated), authenticated gets unlimited
+3. Fetch from GitHub API:
+   - File tree (top 3 levels): `GET /repos/{owner}/{repo}/git/trees/HEAD?recursive=1`
+   - Key manifests: `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `Gemfile`
+   - `README.md`
+   - Existing `CLAUDE.md` (if present)
+4. Detect stack from manifest content
+5. Build prompt with repo context + detected stack
+6. Call OpenAI `gpt-4o-mini` with structured output
+7. Validate `CLAUDE.md` output (has content, has structure)
+8. Fetch registry items matching detected stack tags
+9. Return:
+```json
+{
+  "claude_md": "# CLAUDE.md content...",
+  "detected_stack": ["nextjs", "typescript", "supabase"],
+  "recommended_skills": [
+    { "id": "uuid", "name": "...", "description": "..." }
+  ]
+}
+```
+
+---
 
 ### `POST /api/generate`
-Core skill generation endpoint.
+Skill generation endpoint (unchanged from v1, swap Anthropic → OpenAI).
 
-**Request:**
-```json
-{
-  "description": "A skill that helps Claude write database migrations",
-  "complexity": "standard",
-  "include": {
-    "scripts": true,
-    "references": true,
-    "assets": false
-  }
-}
-```
-
-**Server logic:**
-1. Identify caller: Clerk session (authenticated) or fingerprint (anonymous)
-2. Check generation quota:
-   - Anonymous / free: no generation allowed; return sign-up / trial prompt
-   - Creator (or active trial): if `now() > monthly_reset_at` reset `monthly_gen_count`; check `monthly_gen_count < 30`; if over cap, check `credits > 0` and deduct 1 credit, else 403
-   - Pro: same as creator but cap is 100/month
-   - Overage: deduct from `users.credits`; if credits = 0 return 402 with upgrade prompt
-3. Check `include.*` flags: only active trial, Creator, and Pro users can generate any output
-4. Build prompt and call Claude API
-5. Parse response into file tree
-6. Validate SKILL.md YAML frontmatter (name + description required)
-7. Package into zip via JSZip
-8. Upload zip to Supabase Storage (`skills/{user_id or anon_id}/{uuid}.skill`)
-9. Insert record into `skills` table
-10. Increment `gen_count`
-11. Return zip as binary download (`Content-Type: application/zip`)
-
-**Response:** Binary `.skill` zip file + `Content-Disposition: attachment`
+**Request:** `{ "description", "complexity", "include" }`  
+**Response:** JSON with `skill_md`, `zip_base64`, `filename`, `remaining`
 
 ---
 
-### `POST /api/publish`
-Publish a skill to the marketplace. Requires authenticated pro user.
+### `GET /api/registry`
+Fetch registry items with pagination + filters.
+
+**Query params:** `?type=template|skill&stack=nextjs&category=&sort=recent|popular&page=`
+
+---
+
+### `GET /api/registry/:id/download`
+Increment `install_count` and return signed download URL.
+
+---
+
+### `POST /api/registry/publish`
+Publish a template or skill to the public registry. Requires active Solo or Team subscription.
 
 **Request:**
 ```json
 {
-  "skill_id": "uuid",
-  "name": "DB Migration Helper",
+  "type": "template",
+  "name": "Next.js + Supabase",
   "description": "...",
-  "tags": ["database", "migrations"],
-  "category": "backend"
+  "tags": ["nextjs", "supabase"],
+  "category": "fullstack",
+  "stack": ["nextjs", "typescript", "supabase"],
+  "content": "# CLAUDE.md full content..."
 }
 ```
 
-**Server logic:**
-1. Verify Clerk session → user must exist and `tier = 'pro'`
-2. Verify `skill_id` belongs to this user
-3. Copy skill from private storage path to public storage bucket
-4. Insert into `marketplace_listings`
-5. Return listing ID
+---
+
+### `GET /api/workspace`
+Fetch authenticated user's team workspace items. Requires `org_id` on user record.
 
 ---
 
-### `POST /api/payments/create-order`
-Creates a Razorpay order.
+### `POST /api/workspace/items`
+Add a template or skill to the team workspace (team owner or member).
 
-**Request:** `{ "plan": "creator_monthly" | "pro_monthly" | "pro_annual" | "credit_pack" }`
+---
 
-**Amounts:**
-- `creator_monthly` → ₹399
-- `pro_monthly` → ₹899
-- `pro_annual` → ₹7,499
-- `credit_pack` → ₹199 (grants 20 credits on capture)
-
-**Logic:**
-1. Verify Clerk session
-2. Calculate amount based on plan
-3. Create Razorpay order
-4. Insert pending record into `payments` table
-5. Return `{ order_id, amount, currency, key_id }`
+### `POST /api/payments/create-checkout`
+Supports plans: `solo_monthly`, `team_monthly`.
 
 ---
 
 ### `POST /api/payments/webhook`
-Razorpay webhook handler for payment confirmation.
-
-**Logic:**
-1. Verify Razorpay webhook signature
-2. On `payment.captured` event:
-   - Update `payments` record → `status = 'paid'`
-   - If plan is `creator_monthly` → `users.tier = 'creator'`
-   - If plan is `pro_monthly` or `pro_annual` → `users.tier = 'pro'`
-   - If plan is `credit_pack` → `users.credits += 20`
-3. Return 200
+Dodo Payments webhook. On `payment.succeeded`:
+- `solo_monthly` → `users.tier = 'solo'`
+- `team_monthly` → create `organizations` record + set `users.tier = 'team_owner'`
 
 ---
 
-### `GET /api/marketplace`
-Fetch marketplace listings with pagination + filters.
-
-**Query params:** `?category=&tags=&sort=newest|downloads&page=&limit=`
+### `POST /api/webhooks/clerk`
+Clerk `user.created` webhook. Creates `users` row with `tier = 'free'` and `trial_ends_at = now() + 14 days`. Uses `ignoreDuplicates: true` to be replay-safe.
 
 ---
 
-### `GET /api/marketplace/:id/download`
-Increment download count and return a signed Supabase Storage URL for the skill zip.
+## 6. OpenAI Integration
+
+### Model
+`gpt-4o-mini` (configurable via `OPENAI_MODEL` env var)
+
+### Repo Scanner Prompt (system)
+```
+You are an expert at configuring Claude Code for software projects.
+
+Given a repository's file structure, package manifests, and README, generate an optimized CLAUDE.md file.
+
+CLAUDE.md must include:
+1. A "What is this project?" section (1–2 sentences)
+2. A "Tech Stack" section listing detected technologies
+3. A "Commands" section with the most important dev commands (build, test, lint, dev server)
+4. A "Architecture" section with the key directories and what they contain
+5. A "Key Conventions" section with 3–5 rules specific to this codebase
+6. A "What NOT to do" section with 2–3 common pitfalls for this stack
+
+Keep it under 200 lines. Be specific — generic advice is useless.
+
+Respond ONLY with the raw CLAUDE.md content as a string. No JSON wrapper, no preamble.
+```
+
+### Skill Generator Prompt
+Identical to v1 system prompt (unchanged). Returns JSON with `name`, `skill_md`, `scripts`, `references`, `assets`.
+
+### Retry Logic
+2 attempts on failure or invalid output. On retry, prepend correction instruction to the user message.
 
 ---
 
-## 5. Claude API — Prompt Design
+## 7. GitHub API Integration
 
-The generation prompt is the core IP of Chisel. It runs server-side only and is never exposed to the client.
-
-### System Prompt (condensed)
-```
-You are an expert at writing Claude Code skills. A skill is a structured folder containing:
-- SKILL.md: YAML frontmatter (name, description) + markdown instructions
-- scripts/: executable Python or shell scripts for deterministic tasks
-- references/: markdown documentation loaded into context as needed
-- assets/: static files (templates, fonts, icons)
-
-Rules:
-1. SKILL.md must have valid YAML frontmatter with `name` and `description` fields.
-2. `description` must explain WHEN to trigger the skill — be specific, be slightly pushy.
-3. SKILL.md should be under 500 lines. Use references/ for overflow.
-4. Scripts handle deterministic, repetitive, or computational tasks.
-5. References hold deep domain knowledge, API docs, or schemas.
-
-Respond ONLY with a JSON object in this exact shape:
-{
-  "skill_md": "full SKILL.md content as string",
-  "scripts": [{ "filename": "...", "content": "..." }],
-  "references": [{ "filename": "...", "content": "..." }],
-  "assets": []
-}
-No preamble, no markdown fences.
-```
-
-### User Prompt
-```
-Generate a Claude Code skill for the following:
-
-Description: {user_description}
-Complexity: {simple | standard | full}
-Include scripts: {true | false}
-Include references: {true | false}
-Include assets: {true | false}
-```
-
----
-
-## 6. Zip Packaging (Server-side)
+All repo scanning uses the GitHub REST API v3 (no SDK needed — plain `fetch`).
 
 ```typescript
-import JSZip from 'jszip'
+// Fetch file tree
+const tree = await fetch(
+  `https://api.github.com/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`,
+  { headers: { Accept: "application/vnd.github.v3+json" } }
+)
 
-async function packageSkill(generated: GeneratedSkill): Promise<Buffer> {
-  const zip = new JSZip()
-  const root = zip.folder(generated.name)!
-
-  root.file('SKILL.md', generated.skill_md)
-
-  if (generated.scripts.length > 0) {
-    const scripts = root.folder('scripts')!
-    for (const s of generated.scripts) {
-      scripts.file(s.filename, s.content)
-    }
-  }
-
-  if (generated.references.length > 0) {
-    const refs = root.folder('references')!
-    for (const r of generated.references) {
-      refs.file(r.filename, r.content)
-    }
-  }
-
-  return zip.generateAsync({ type: 'nodebuffer' })
-}
+// Fetch file content
+const content = await fetch(
+  `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
+  { headers: { Accept: "application/vnd.github.v3+json" } }
+)
+// Content is base64-encoded in the response
 ```
 
----
+**Rate limits:** Unauthenticated: 60 req/hr. Authenticated (via GitHub OAuth token, v2): 5,000 req/hr.  
+For v1: unauthenticated is sufficient — each scan uses 2–5 requests.
 
-## 7. Anonymous Session Fingerprinting
-
-For anonymous users, generation is blocked before model invocation. Fingerprinting remains for trial/account linkage and abuse analytics:
-- SHA-256 hash of: `IP address + User-Agent`
-- Stored in `anonymous_sessions` table
-- On sign-up: if anonymous `fingerprint` matches, carry over any historical `gen_count` to user account
-
-This is a soft gate — not cryptographically secure, but sufficient for casual abuse prevention.
+**Private repos:** Not supported in v1. Prompt user to download repo as zip and upload instead.
 
 ---
 
 ## 8. Frontend Page Structure
 
 ```
-/                        → Landing page + generator
-/marketplace             → Public skill catalog
-/marketplace/[id]        → Skill detail + download
-/dashboard               → Auth-gated: history, published skills (pro)
-/pricing                 → Plans + Razorpay checkout
+/                        → Landing page + repo scanner (hero)
+/generate                → Skill generator
+/registry                → Public registry (templates + skills)
+/registry/[id]           → Item detail + download
+/workspace               → Team workspace (auth-gated, team tier only)
+/dashboard               → Auth-gated: history, published items, billing
+/pricing                 → Plans + Dodo Payments checkout
 /sign-in                 → Clerk sign-in
 /sign-up                 → Clerk sign-up
 ```
 
 ---
 
-## 9. Storage Layout (Supabase Storage)
+## 9. Auth & Middleware
 
-```
-Bucket: chisel-skills (private)
-  └── skills/
-        ├── {user_id}/{skill_uuid}.skill    ← authenticated user skills
-        └── anon/{session_id}/{uuid}.skill  ← anonymous skills
+Protected routes (Clerk middleware):
+- `/dashboard/*`
+- `/workspace/*`
+- `/api/generate`
+- `/api/registry/publish`
+- `/api/workspace/*`
+- `/api/payments/create-checkout`
 
-Bucket: chisel-marketplace (public)
-  └── listings/
-        └── {listing_id}.skill             ← published marketplace skills
-```
+Public routes:
+- `/` (scanner works for 1 free scan)
+- `/registry/*`
+- `/api/scan` (quota enforced inside route)
+- `/api/registry` (read)
+- `/api/registry/*/download`
+- `/pricing`
 
 ---
 
-## 10. Environment Variables
+## 10. RLS Policies Summary
+
+| Table | anon | authenticated | service_role |
+|---|---|---|---|
+| `users` | blocked | blocked | full access |
+| `skills` | blocked | blocked | full access |
+| `registry_items` | SELECT | SELECT | full access |
+| `organizations` | blocked | blocked | full access |
+| `org_members` | blocked | blocked | full access |
+| `org_items` | blocked | blocked | full access |
+| `anonymous_sessions` | blocked | blocked | full access |
+| `payments` | blocked | blocked | full access |
+
+Storage:
+- `chisel-skills`: service role only
+- `chisel-registry`: public SELECT (anon + authenticated)
+- `chisel-workspace`: service role only
+
+---
+
+## 11. Environment Variables
 
 ```env
 # Clerk
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
+CLERK_WEBHOOK_SIGNING_SECRET=
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
-# Anthropic
-ANTHROPIC_API_KEY=
+# OpenAI
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini          # optional override
 
-# Razorpay
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-RAZORPAY_WEBHOOK_SECRET=
+# Dodo Payments
+DODO_PAYMENTS_API_KEY=
+DODO_PAYMENTS_WEBHOOK_KEY=
+DODO_PAYMENTS_ENVIRONMENT=test_mode
+DODO_SOLO_MONTHLY_PRODUCT_ID=
+DODO_TEAM_MONTHLY_PRODUCT_ID=
 
 # App
-NEXT_PUBLIC_APP_URL=
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 ---
 
-## 11. V2 Architecture Notes (Premium Marketplace)
+## 12. V2 Architecture Notes
 
-When building the premium skill layer, the following additions are needed:
+### CLI Tool
+- `npx chisel scan` — calls `/api/scan` with local file tree (no GitHub fetch needed)
+- `npx chisel install <id>` — calls `/api/registry/:id/download` and unzips to `.claude/skills/`
+- Auth via API key generated in dashboard
 
-- `marketplace_listings` gains: `is_premium boolean`, `price integer`, `author_payout_account text`
-- New table: `skill_purchases (id, buyer_id, listing_id, payment_id, purchased_at)`
-- Razorpay Route (or manual payout): split captured payment 70/30 at webhook time
-- Creator dashboard page: earnings, download stats, payout history
-- Download gate: `/api/marketplace/:id/download` checks `skill_purchases` for premium listings before issuing signed URL
+### MCP Registry
+- New `registry_items.type = 'mcp'` with JSON blob of server config
+- New `mcp_configs` table for structured MCP server metadata
+
+### Analytics
+- New `events` table: `(user_id, org_id, event_type, metadata, created_at)`
+- Background job aggregates into `analytics_daily`
+- Dashboard page reads aggregated table
+
+### Seat Expansion
+- `organizations` gains `seat_limit` column
+- Dodo Payments quantity-based subscription for seat adds
