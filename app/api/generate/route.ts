@@ -83,8 +83,9 @@ export async function POST(request: NextRequest) {
       storagePath,
       zip,
       userId,
-    }).catch(() => {
+    }).catch((err: unknown) => {
       // Storage is best-effort — a bucket misconfiguration should not block the download.
+      console.error("[chisel] storage error:", err instanceof Error ? err.message : err);
     });
 
     const wantsJson = request.headers

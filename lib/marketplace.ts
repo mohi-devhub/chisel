@@ -185,7 +185,7 @@ export async function getMarketplaceDownloadUrl(id: string) {
 
   const { data, error } = await supabase.storage
     .from("chisel-marketplace")
-    .createSignedUrl(listing.storage_path, 60, {
+    .createSignedUrl(listing.storage_path, 3600, {
       download: `${listing.name}.skill`,
     });
 

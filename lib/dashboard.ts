@@ -113,7 +113,7 @@ export async function getSkillDownloadUrl({
 
   const { data, error } = await supabase.storage
     .from("chisel-skills")
-    .createSignedUrl(skill.storage_path, 60, {
+    .createSignedUrl(skill.storage_path, 3600, {
       download: `${skill.name}.skill`,
     });
 
