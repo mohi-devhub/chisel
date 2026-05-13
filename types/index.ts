@@ -1,10 +1,6 @@
-export type Tier = "free" | "creator" | "pro";
+export type Tier = "free" | "solo" | "team_owner" | "team_member";
 
-export type Plan =
-  | "creator_monthly"
-  | "pro_monthly"
-  | "pro_annual"
-  | "credit_pack";
+export type Plan = "solo_monthly" | "team_monthly";
 
 export interface GeneratedSkill {
   name: string;
@@ -49,10 +45,10 @@ export interface User {
   id: string;
   email: string;
   tier: Tier;
+  org_id: string | null;
   gen_count: number;
   monthly_gen_count: number;
   monthly_reset_at: string;
-  credits: number;
   trial_ends_at: string | null;
   created_at: string;
 }
