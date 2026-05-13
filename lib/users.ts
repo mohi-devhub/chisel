@@ -3,7 +3,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import type { User } from "@/types";
 
-const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000;
 
 export async function ensureUserRecord(userId: string, fingerprint: string) {
   const supabase = createClient();

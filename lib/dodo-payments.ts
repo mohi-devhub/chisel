@@ -9,25 +9,15 @@ export const PLAN_DETAILS: Record<
   Plan,
   { label: string; price: string; productIdEnv: string }
 > = {
-  creator_monthly: {
-    label: "Creator Monthly",
-    price: "$14.99",
-    productIdEnv: "DODO_CREATOR_MONTHLY_PRODUCT_ID",
+  solo_monthly: {
+    label: "Solo",
+    price: "$9/mo",
+    productIdEnv: "DODO_SOLO_MONTHLY_PRODUCT_ID",
   },
-  pro_monthly: {
-    label: "Pro Monthly",
-    price: "$39.99",
-    productIdEnv: "DODO_PRO_MONTHLY_PRODUCT_ID",
-  },
-  pro_annual: {
-    label: "Pro Annual",
-    price: "$439.99",
-    productIdEnv: "DODO_PRO_ANNUAL_PRODUCT_ID",
-  },
-  credit_pack: {
-    label: "Credit Pack",
-    price: "$7.99",
-    productIdEnv: "DODO_CREDIT_PACK_PRODUCT_ID",
+  team_monthly: {
+    label: "Team",
+    price: "$49/mo",
+    productIdEnv: "DODO_TEAM_MONTHLY_PRODUCT_ID",
   },
 };
 

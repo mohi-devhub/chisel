@@ -1,9 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Tier, User } from "@/types";
 
-const FREE_GENERATION_LIMIT = 0;
-const CREATOR_MONTHLY_LIMIT = 30;
-const PRO_MONTHLY_LIMIT = 100;
+const SOLO_MONTHLY_LIMIT = 30;
+const TEAM_MONTHLY_LIMIT = 200;
 const MONTH_IN_MS = 30 * 24 * 60 * 60 * 1000;
 
 export interface AnonymousQuota {
@@ -38,16 +37,14 @@ export async function checkAnonymousQuota(
   if (!data) {
     return {
       allowed: false,
-      remaining: FREE_GENERATION_LIMIT,
+      remaining: 0,
       genCount: 0,
     };
   }
 
-  const remaining = Math.max(FREE_GENERATION_LIMIT - data.gen_count, 0);
-
   return {
     allowed: false,
-    remaining,
+    remaining: 0,
     sessionId: data.id,
     genCount: data.gen_count,
   };
@@ -60,7 +57,7 @@ export async function consumeAnonymousQuota(
 
   const { data, error } = await supabase.rpc("consume_anonymous_quota", {
     p_fingerprint: fingerprint,
-    p_limit: FREE_GENERATION_LIMIT,
+    p_limit: 0,
   });
 
   if (error) {
@@ -71,7 +68,7 @@ export async function consumeAnonymousQuota(
 
   return {
     allowed: row.allowed,
-    remaining: Math.max(FREE_GENERATION_LIMIT - row.gen_count, 0),
+    remaining: 0,
     sessionId: row.session_id,
     genCount: row.gen_count,
   };
@@ -79,7 +76,7 @@ export async function consumeAnonymousQuota(
 
 export function getEffectiveTier(user: User): Tier {
   if (user.trial_ends_at && new Date(user.trial_ends_at).getTime() > Date.now()) {
-    return "creator";
+    return "solo";
   }
 
   return user.tier;
@@ -99,7 +96,9 @@ export function checkUserQuota(user: User): UserQuota {
 
   const monthlyCount = shouldResetMonthlyCount(user) ? 0 : user.monthly_gen_count;
   const monthlyLimit =
-    effectiveTier === "pro" ? PRO_MONTHLY_LIMIT : CREATOR_MONTHLY_LIMIT;
+    effectiveTier === "team_owner" || effectiveTier === "team_member"
+      ? TEAM_MONTHLY_LIMIT
+      : SOLO_MONTHLY_LIMIT;
   const monthlyRemaining = Math.max(monthlyLimit - monthlyCount, 0);
 
   if (monthlyRemaining > 0) {
@@ -111,10 +110,10 @@ export function checkUserQuota(user: User): UserQuota {
   }
 
   return {
-    allowed: user.credits > 0,
-    remaining: user.credits,
+    allowed: false,
+    remaining: 0,
     effectiveTier,
-    reason: user.credits > 0 ? undefined : "monthly_limit",
+    reason: "monthly_limit",
   };
 }
 
