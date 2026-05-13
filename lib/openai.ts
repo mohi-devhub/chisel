@@ -1,8 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
 import type { GeneratedSkill, GenerateRequest } from "@/types";
 
-const DEFAULT_MODEL = "claude-sonnet-4-6";
+const DEFAULT_MODEL = "gpt-4o-mini";
 const GENERATION_ATTEMPTS = 2;
 
 const systemPrompt = `You are an expert at writing Claude Code skills.
@@ -53,32 +53,28 @@ Return JSON only.`;
 export async function generateSkill(
   request: GenerateRequest
 ): Promise<GeneratedSkill> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY is not configured");
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not configured");
   }
 
-  const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  });
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const model = process.env.OPENAI_MODEL ?? DEFAULT_MODEL;
 
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= GENERATION_ATTEMPTS; attempt += 1) {
     try {
-      const response = await anthropic.messages.create({
-        model: process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL,
+      const response = await client.chat.completions.create({
+        model,
         max_tokens: 4096,
         temperature: 0,
-        system: systemPrompt,
-        messages: [{ role: "user", content: buildPrompt(request, attempt) }],
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: buildPrompt(request, attempt) },
+        ],
       });
 
-      const text = response.content
-        .filter((block) => block.type === "text")
-        .map((block) => block.text)
-        .join("\n")
-        .trim();
-
+      const text = response.choices[0]?.message?.content?.trim() ?? "";
       return parseGeneratedSkill(text);
     } catch (error) {
       lastError = error;
@@ -87,7 +83,7 @@ export async function generateSkill(
 
   throw lastError instanceof Error
     ? lastError
-    : new Error("Claude returned an invalid skill payload");
+    : new Error("OpenAI returned an invalid skill payload");
 }
 
 export function parseGeneratedSkill(text: string): GeneratedSkill {
@@ -122,11 +118,11 @@ function normalizeGeneratedSkill(
   value: Partial<GeneratedSkill>
 ): GeneratedSkill {
   if (!value || typeof value !== "object") {
-    throw new Error("Claude returned an invalid skill payload");
+    throw new Error("OpenAI returned an invalid skill payload");
   }
 
   if (!value.skill_md || typeof value.skill_md !== "string") {
-    throw new Error("Claude response is missing skill_md");
+    throw new Error("OpenAI response is missing skill_md");
   }
 
   const name =
@@ -135,7 +131,7 @@ function normalizeGeneratedSkill(
       : readNameFromFrontmatter(value.skill_md);
 
   if (!name) {
-    throw new Error("Claude response is missing skill name");
+    throw new Error("OpenAI response is missing skill name");
   }
 
   validateSkillMarkdown(value.skill_md);

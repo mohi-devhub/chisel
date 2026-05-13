@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getFingerprint } from "@/lib/fingerprint";
-import { generateSkill } from "@/lib/anthropic";
+import { generateSkill } from "@/lib/openai";
 import { packageSkill } from "@/lib/packaging";
 import { checkUserQuota, consumeUserQuota } from "@/lib/quota";
 import { createClient } from "@/lib/supabase/server";
