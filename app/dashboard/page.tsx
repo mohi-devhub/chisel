@@ -52,7 +52,9 @@ export default async function DashboardPage({
     dashboard.user?.tier,
     dashboard.user?.trial_ends_at
   );
-  const isPro = dashboard.user?.tier === "pro";
+  const canPublish = ["solo", "team_owner", "team_member"].includes(
+    dashboard.user?.tier ?? ""
+  );
   const publishedSkillIds = new Set(
     dashboard.publishedSkills.map((skill) => skill.skill_id)
   );
@@ -127,8 +129,8 @@ export default async function DashboardPage({
             />
             <MetricCard
               icon={<CreditCard className="size-4" />}
-              label="Credits"
-              value={dashboard.user?.credits ?? 0}
+              label="Monthly gens"
+              value={dashboard.user?.monthly_gen_count ?? 0}
             />
             <MetricCard
               icon={<Store className="size-4" />}
@@ -170,10 +172,10 @@ export default async function DashboardPage({
                           </p>
                         </div>
                         <div className="flex shrink-0 flex-wrap gap-2">
-                          {isPro && !publishedSkillIds.has(skill.id) ? (
+                          {canPublish && !publishedSkillIds.has(skill.id) ? (
                             <PublishSkillDialog skill={skill} />
                           ) : null}
-                          {isPro && publishedSkillIds.has(skill.id) ? (
+                          {canPublish && publishedSkillIds.has(skill.id) ? (
                             <Badge variant="secondary" className="text-xs">Published</Badge>
                           ) : null}
                           <Button variant="outline" size="sm" asChild>
@@ -207,7 +209,7 @@ export default async function DashboardPage({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {isPro ? (
+                {canPublish ? (
                   dashboard.publishedSkills.length > 0 ? (
                     <div className="space-y-3">
                       {dashboard.publishedSkills.map((skill) => (

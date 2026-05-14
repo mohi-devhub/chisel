@@ -32,7 +32,6 @@ export interface DashboardData {
     | "tier"
     | "gen_count"
     | "monthly_gen_count"
-    | "credits"
     | "trial_ends_at"
   > | null;
   skills: DashboardSkill[];
@@ -46,7 +45,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
     supabase
       .from("users")
       .select(
-        "id, email, tier, gen_count, monthly_gen_count, credits, trial_ends_at"
+        "id, email, tier, gen_count, monthly_gen_count, trial_ends_at"
       )
       .eq("id", userId)
       .maybeSingle<DashboardData["user"]>(),

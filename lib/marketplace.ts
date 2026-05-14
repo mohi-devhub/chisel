@@ -239,7 +239,7 @@ export async function publishSkill({
     throw new Error(`Could not load skill: ${skillError.message}`);
   }
 
-  if (!user || user.tier !== "pro") {
+  if (!user || !["solo", "team_owner", "team_member"].includes(user.tier)) {
     return { status: "forbidden" as const };
   }
 
