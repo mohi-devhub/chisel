@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, CreditCard, Hammer, Loader2, PackagePlus, Zap } from "lucide-react";
+import { Check, CreditCard, Hammer, Loader2, Users, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -23,13 +23,6 @@ interface CheckoutResponse {
   name: string;
 }
 
-const PRO_MONTHLY_PRICE = 39.99;
-const PRO_ANNUAL_PRICE = 439.99;
-const PRO_ANNUAL_SAVINGS_PERCENT = Math.round(
-  ((PRO_MONTHLY_PRICE * 12 - PRO_ANNUAL_PRICE) / (PRO_MONTHLY_PRICE * 12)) *
-    100
-);
-
 const plans: Array<{
   plan: Plan;
   name: string;
@@ -37,51 +30,38 @@ const plans: Array<{
   cadence: string;
   description: string;
   badge?: string;
-  savings?: string;
   featured?: boolean;
   features: string[];
 }> = [
   {
-    plan: "creator_monthly",
-    name: "Creator",
-    price: "$14.99",
+    plan: "solo_monthly",
+    name: "Solo",
+    price: "$9",
     cadence: "/ month",
-    description: "Full skill generation for regular Claude Code users.",
+    description: "For individual developers configuring Claude Code.",
     features: [
-      "30 generations per month",
-      "SKILL.md, scripts, references, and assets",
+      "Unlimited repo scans",
+      "30 skill generations per month",
+      "Full skill structure (scripts, references, assets)",
+      "Publish to community registry",
       "Generation history",
-      "Credit packs for overage",
     ],
   },
   {
-    plan: "pro_monthly",
-    name: "Pro",
-    price: `$${PRO_MONTHLY_PRICE.toFixed(2)}`,
+    plan: "team_monthly",
+    name: "Team",
+    price: "$49",
     cadence: "/ month",
-    description: "Higher volume generation and marketplace publishing.",
-    badge: "Most popular",
+    description: "Shared config layer for your whole engineering team.",
+    badge: "Best for teams",
     featured: true,
     features: [
-      "100 generations per month",
+      "Unlimited repo scans",
+      "200 generations per month (shared pool)",
       "Full skill structure",
-      "Marketplace publishing",
-      "Download analytics",
-    ],
-  },
-  {
-    plan: "pro_annual",
-    name: "Pro Annual",
-    price: `$${PRO_ANNUAL_PRICE.toFixed(2)}`,
-    cadence: "/ year",
-    description: "The Pro tier with annual billing.",
-    badge: `Save ${PRO_ANNUAL_SAVINGS_PERCENT}%`,
-    savings: `vs $${(PRO_MONTHLY_PRICE * 12).toFixed(0)} billed monthly`,
-    features: [
-      "100 generations per month",
-      "Full skill structure",
-      "Marketplace publishing",
-      "Lower annual cost",
+      "Publish to community registry",
+      "Private team workspace (up to 5 seats)",
+      "Shared templates and skills",
     ],
   },
 ];
@@ -142,7 +122,7 @@ export default function PricingPage() {
           </Link>
           <nav className="flex items-center gap-1">
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
-              <Link href="/marketplace">Marketplace</Link>
+              <Link href="/registry">Registry</Link>
             </Button>
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
               <Link href="/dashboard">Dashboard</Link>
@@ -160,11 +140,11 @@ export default function PricingPage() {
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Choose your{" "}
               <span className="bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
-                generation plan
+                plan
               </span>
             </h1>
             <p className="mt-3 text-sm text-muted-foreground">
-              Payments confirmed by Dodo Payments webhook before account access changes.
+              14-day free trial on every account. No credit card required.
             </p>
           </div>
 
@@ -174,7 +154,7 @@ export default function PricingPage() {
             </div>
           ) : null}
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="mx-auto grid max-w-2xl gap-4 lg:max-w-none lg:grid-cols-2">
             {plans.map((item) => (
               <Card
                 key={item.plan}
@@ -187,17 +167,19 @@ export default function PricingPage() {
               >
                 {item.badge ? (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge
-                      className={item.featured ? "bg-primary text-primary-foreground border-0" : ""}
-                      variant={item.featured ? "default" : "secondary"}
-                    >
+                    <Badge className="bg-primary text-primary-foreground border-0">
                       {item.badge}
                     </Badge>
                   </div>
                 ) : null}
 
                 <CardHeader className="pt-6 pb-3">
-                  <CardTitle className={item.featured ? "text-primary" : ""}>{item.name}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    {item.featured ? (
+                      <Users className="size-4 text-primary" />
+                    ) : null}
+                    <CardTitle className={item.featured ? "text-primary" : ""}>{item.name}</CardTitle>
+                  </div>
                   <CardDescription>{item.description}</CardDescription>
                 </CardHeader>
 
@@ -206,9 +188,6 @@ export default function PricingPage() {
                     <span className="text-4xl font-bold tracking-tight">{item.price}</span>
                     <span className="mb-1 text-sm text-muted-foreground">{item.cadence}</span>
                   </div>
-                  {item.savings ? (
-                    <p className="mt-1 text-xs text-muted-foreground">{item.savings}</p>
-                  ) : null}
                 </CardContent>
 
                 <CardContent className="flex-1 pb-3">
@@ -242,46 +221,16 @@ export default function PricingPage() {
                     ) : (
                       <CreditCard className="size-4" />
                     )}
-                    {loadingPlan === item.plan ? "Opening…" : "Pay with Dodo"}
+                    {loadingPlan === item.plan ? "Opening…" : "Start free trial"}
                   </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Credit pack */}
-          <Card className="mt-4 rounded-xl border-border/60 bg-card/80">
-            <CardContent className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                  <PackagePlus className="size-5" />
-                </div>
-                <div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold">$7.99</span>
-                    <span className="text-sm text-muted-foreground">one-time</span>
-                  </div>
-                  <p className="text-sm font-medium">Credit Pack — 20 extra generations</p>
-                  <p className="text-xs text-muted-foreground">
-                    Add to any active tier. Consumed after your monthly quota.
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => startCheckout("credit_pack")}
-                disabled={loadingPlan !== null}
-                className="shrink-0"
-              >
-                {loadingPlan === "credit_pack" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <PackagePlus className="size-4" />
-                )}
-                Buy credits
-              </Button>
-            </CardContent>
-          </Card>
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Payments processed by Dodo Payments. Cancel any time.
+          </p>
         </section>
       </div>
     </main>

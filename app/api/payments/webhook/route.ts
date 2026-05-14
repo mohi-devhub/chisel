@@ -65,22 +65,91 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createClient();
-    const { data, error } = await supabase.rpc("capture_dodo_payment", {
-      p_checkout_session_id: checkoutSessionId,
-      p_payment_id: paymentId,
-    });
 
-    if (error) {
-      throw new Error(`Could not capture payment: ${error.message}`);
+    const { data: paymentRow, error: paymentError } = await supabase
+      .from("payments")
+      .select("id, user_id, plan, status")
+      .eq("dodo_checkout_session_id", checkoutSessionId)
+      .maybeSingle<{ id: string; user_id: string; plan: string; status: string }>();
+
+    if (paymentError) {
+      throw new Error(`Could not look up payment: ${paymentError.message}`);
     }
 
-    const row = Array.isArray(data) ? data[0] : data;
-
-    if (!row?.handled) {
+    if (!paymentRow) {
       return NextResponse.json(
         { error: "payment_not_found" },
         { status: 404 }
       );
+    }
+
+    // Idempotency — already processed
+    if (paymentRow.status === "paid") {
+      return NextResponse.json({ received: true });
+    }
+
+    const { error: updateError } = await supabase
+      .from("payments")
+      .update({ status: "paid", dodo_payment_id: paymentId })
+      .eq("id", paymentRow.id);
+
+    if (updateError) {
+      throw new Error(`Could not update payment: ${updateError.message}`);
+    }
+
+    if (paymentRow.plan === "solo_monthly") {
+      const { error } = await supabase
+        .from("users")
+        .update({ tier: "solo", monthly_gen_count: 0, monthly_reset_at: new Date().toISOString() })
+        .eq("id", paymentRow.user_id);
+
+      if (error) {
+        throw new Error(`Could not upgrade user to solo: ${error.message}`);
+      }
+    } else if (paymentRow.plan === "team_monthly") {
+      const { data: userRow, error: userError } = await supabase
+        .from("users")
+        .select("email")
+        .eq("id", paymentRow.user_id)
+        .single<{ email: string }>();
+
+      if (userError) {
+        throw new Error(`Could not fetch user for team creation: ${userError.message}`);
+      }
+
+      const orgName = userRow.email.split("@")[0] + "'s Team";
+
+      const { data: orgRow, error: orgError } = await supabase
+        .from("organizations")
+        .insert({ name: orgName, owner_id: paymentRow.user_id })
+        .select("id")
+        .single<{ id: string }>();
+
+      if (orgError) {
+        throw new Error(`Could not create organization: ${orgError.message}`);
+      }
+
+      const { error: memberError } = await supabase
+        .from("org_members")
+        .insert({ org_id: orgRow.id, user_id: paymentRow.user_id, role: "owner" });
+
+      if (memberError) {
+        throw new Error(`Could not add org owner: ${memberError.message}`);
+      }
+
+      const { error: tierError } = await supabase
+        .from("users")
+        .update({
+          tier: "team_owner",
+          org_id: orgRow.id,
+          monthly_gen_count: 0,
+          monthly_reset_at: new Date().toISOString(),
+        })
+        .eq("id", paymentRow.user_id);
+
+      if (tierError) {
+        throw new Error(`Could not upgrade user to team_owner: ${tierError.message}`);
+      }
     }
 
     return NextResponse.json({ received: true });
