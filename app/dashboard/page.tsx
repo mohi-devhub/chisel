@@ -8,6 +8,7 @@ import {
   LibraryBig,
   PackageCheck,
   Store,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -76,8 +77,13 @@ export default async function DashboardPage({
           </Link>
           <nav className="flex items-center gap-1">
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
-              <Link href="/marketplace">Marketplace</Link>
+              <Link href="/registry">Registry</Link>
             </Button>
+            {dashboard.workspace ? (
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
+                <Link href="/workspace">Workspace</Link>
+              </Button>
+            ) : null}
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
               <Link href="/pricing">Pricing</Link>
             </Button>
@@ -138,6 +144,29 @@ export default async function DashboardPage({
               value={dashboard.publishedSkills.length}
             />
           </div>
+
+          {dashboard.workspace ? (
+            <Card className="mb-6 rounded-xl border-primary/30 bg-primary/5">
+              <CardHeader className="flex flex-row items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Users className="size-4" />
+                    {dashboard.workspace.org_name}
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    {dashboard.workspace.member_count} member
+                    {dashboard.workspace.member_count === 1 ? "" : "s"} ·{" "}
+                    {dashboard.workspace.item_count} item
+                    {dashboard.workspace.item_count === 1 ? "" : "s"} ·{" "}
+                    <span className="capitalize">{dashboard.workspace.role}</span>
+                  </CardDescription>
+                </div>
+                <Button size="sm" asChild>
+                  <Link href="/workspace">Open workspace</Link>
+                </Button>
+              </CardHeader>
+            </Card>
+          ) : null}
 
           {/* Content grid */}
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">

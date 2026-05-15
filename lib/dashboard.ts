@@ -1,6 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Tier, User } from "@/types";
 
+export interface DashboardWorkspace {
+  org_id: string;
+  org_name: string;
+  role: "owner" | "member";
+  member_count: number;
+  item_count: number;
+}
+
 export interface DashboardSkill {
   id: string;
   name: string;
@@ -36,6 +44,7 @@ export interface DashboardData {
   > | null;
   skills: DashboardSkill[];
   publishedSkills: PublishedSkill[];
+  workspace: DashboardWorkspace | null;
 }
 
 export async function getDashboardData(userId: string): Promise<DashboardData> {
@@ -83,6 +92,51 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
     user: userResult.data,
     skills: skillsResult.data ?? [],
     publishedSkills: publishedResult.data ?? [],
+    workspace: await getDashboardWorkspace(userId),
+  };
+}
+
+async function getDashboardWorkspace(userId: string): Promise<DashboardWorkspace | null> {
+  const supabase = createClient();
+  const { data: membership, error } = await supabase
+    .from("org_members")
+    .select("role, organizations:org_id(id, name)")
+    .eq("user_id", userId)
+    .maybeSingle<{
+      role: "owner" | "member";
+      organizations:
+        | { id: string; name: string }
+        | Array<{ id: string; name: string }>
+        | null;
+    }>();
+
+  if (error) {
+    throw new Error(`Could not load workspace summary: ${error.message}`);
+  }
+  if (!membership || !membership.organizations) return null;
+
+  const org = Array.isArray(membership.organizations)
+    ? membership.organizations[0]
+    : membership.organizations;
+  if (!org) return null;
+
+  const [{ count: memberCount }, { count: itemCount }] = await Promise.all([
+    supabase
+      .from("org_members")
+      .select("user_id", { count: "exact", head: true })
+      .eq("org_id", org.id),
+    supabase
+      .from("org_items")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", org.id),
+  ]);
+
+  return {
+    org_id: org.id,
+    org_name: org.name,
+    role: membership.role,
+    member_count: memberCount ?? 0,
+    item_count: itemCount ?? 0,
   };
 }
 
