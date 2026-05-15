@@ -2,17 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, CreditCard, Hammer, Loader2, Users, Zap } from "lucide-react";
+import { Check, CreditCard, Hammer, Loader2, Sparkles, Users, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Plan } from "@/types";
 
@@ -24,21 +17,41 @@ interface CheckoutResponse {
 }
 
 const plans: Array<{
-  plan: Plan;
+  plan: Plan | null;
   name: string;
   price: string;
   cadence: string;
   description: string;
   badge?: string;
   featured?: boolean;
+  cta: string;
+  ctaHref?: string;
   features: string[];
+  icon: React.ReactNode;
 }> = [
+  {
+    plan: null,
+    name: "Free",
+    price: "$0",
+    cadence: "forever",
+    description: "Try Chisel before you commit.",
+    cta: "Start scanning",
+    ctaHref: "/",
+    icon: <Sparkles className="size-4" />,
+    features: [
+      "1 free repo scan",
+      "Download generated CLAUDE.md",
+      "Browse the registry",
+    ],
+  },
   {
     plan: "solo_monthly",
     name: "Solo",
     price: "$9",
     cadence: "/ month",
-    description: "For individual developers configuring Claude Code.",
+    description: "For individual developers who live in Claude Code.",
+    cta: "Start free trial",
+    icon: <Zap className="size-4" />,
     features: [
       "Unlimited repo scans",
       "30 skill generations per month",
@@ -52,15 +65,17 @@ const plans: Array<{
     name: "Team",
     price: "$49",
     cadence: "/ month",
-    description: "Shared config layer for your whole engineering team.",
-    badge: "Best for teams",
+    description: "Shared config layer for your entire engineering team.",
+    badge: "Most popular",
     featured: true,
+    cta: "Start free trial",
+    icon: <Users className="size-4" />,
     features: [
       "Unlimited repo scans",
       "200 generations per month (shared pool)",
       "Full skill structure",
       "Publish to community registry",
-      "Private team workspace (up to 5 seats)",
+      "Private team workspace — up to 5 seats",
       "Shared templates and skills",
     ],
   },
@@ -89,131 +104,160 @@ export default function PricingPage() {
           router.push("/sign-in");
           return;
         }
-
-        throw new Error(
-          payload.message ?? payload.details ?? "Could not start checkout."
-        );
+        throw new Error(payload.message ?? payload.details ?? "Could not start checkout.");
       }
 
       const checkout = payload as CheckoutResponse;
       window.location.assign(checkout.checkout_url);
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Could not start checkout."
-      );
+      setError(caught instanceof Error ? caught.message : "Could not start checkout.");
       setLoadingPlan(null);
     }
   }
 
   return (
     <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-40" />
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[500px] w-[800px] rounded-full bg-primary/5 blur-3xl" />
+        <div className="absolute -top-60 left-1/2 -translate-x-1/2 h-[600px] w-[900px] rounded-full bg-primary/5 blur-[120px]" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        {/* Header */}
-        <header className="flex items-center justify-between border-b border-border/60 pb-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/40%)]">
-              <Hammer className="size-4" />
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+        {/* Nav */}
+        <header className="flex items-center justify-between pb-6">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/50%)]">
+              <Hammer className="size-3.5" />
             </div>
-            <span className="text-base font-semibold tracking-tight">Chisel</span>
+            <span className="text-sm font-semibold tracking-tight">Chisel</span>
           </Link>
-          <nav className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
+          <nav className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              asChild
+            >
               <Link href="/registry">Registry</Link>
             </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              asChild
+            >
               <Link href="/dashboard">Dashboard</Link>
+            </Button>
+            <Button
+              size="sm"
+              className="ml-2 h-8 text-xs shadow-[0_0_16px_theme(colors.primary/30%)]"
+              asChild
+            >
+              <Link href="/sign-in">Sign in</Link>
             </Button>
           </nav>
         </header>
 
         <section className="py-10">
           {/* Hero */}
-          <div className="mb-10 text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+          <div className="mb-12 text-center">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-3.5 py-1.5 text-xs font-medium text-primary">
               <Zap className="size-3" />
-              Simple, transparent pricing
+              14-day free trial on every paid plan
             </div>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Choose your{" "}
-              <span className="bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
-                plan
-              </span>
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+              Simple,{" "}
+              <span className="bg-gradient-to-r from-primary via-amber-300 to-primary bg-clip-text text-transparent">
+                transparent
+              </span>{" "}
+              pricing
             </h1>
-            <p className="mt-3 text-sm text-muted-foreground">
-              14-day free trial on every account. No credit card required.
+            <p className="mt-4 text-sm text-muted-foreground">
+              No credit card required to start. Cancel any time.
             </p>
           </div>
 
           {error ? (
-            <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <div className="mb-8 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive">
               {error}
             </div>
           ) : null}
 
-          <div className="mx-auto grid max-w-2xl gap-4 lg:max-w-none lg:grid-cols-2">
+          {/* Plans grid */}
+          <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-3">
             {plans.map((item) => (
-              <Card
-                key={item.plan}
+              <div
+                key={item.name}
                 className={[
-                  "relative flex flex-col rounded-xl transition-all duration-200",
+                  "relative flex flex-col rounded-2xl border p-6 transition-all duration-200",
                   item.featured
-                    ? "border-primary/40 bg-primary/5 shadow-[0_0_30px_theme(colors.primary/10%)]"
-                    : "border-border/60 bg-card/80",
+                    ? "border-primary/50 bg-primary/5 shadow-[0_0_40px_theme(colors.primary/12%)]"
+                    : "border-border/50 bg-card/50",
                 ].join(" ")}
               >
                 {item.badge ? (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground border-0">
+                    <Badge className="bg-primary text-primary-foreground border-0 shadow-[0_0_12px_theme(colors.primary/40%)]">
                       {item.badge}
                     </Badge>
                   </div>
                 ) : null}
 
-                <CardHeader className="pt-6 pb-3">
-                  <div className="flex items-center gap-2">
-                    {item.featured ? (
-                      <Users className="size-4 text-primary" />
-                    ) : null}
-                    <CardTitle className={item.featured ? "text-primary" : ""}>{item.name}</CardTitle>
+                {/* Plan icon + name */}
+                <div className="mb-4 flex items-center gap-2.5">
+                  <div className={[
+                    "flex size-8 items-center justify-center rounded-lg",
+                    item.featured ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground",
+                  ].join(" ")}>
+                    {item.icon}
                   </div>
-                  <CardDescription>{item.description}</CardDescription>
-                </CardHeader>
+                  <span className={[
+                    "text-base font-semibold",
+                    item.featured ? "text-primary" : "",
+                  ].join(" ")}>
+                    {item.name}
+                  </span>
+                </div>
 
-                <CardContent className="pb-3">
-                  <div className="flex items-end gap-1">
-                    <span className="text-4xl font-bold tracking-tight">{item.price}</span>
-                    <span className="mb-1 text-sm text-muted-foreground">{item.cadence}</span>
-                  </div>
-                </CardContent>
+                {/* Price */}
+                <div className="mb-1 flex items-end gap-1.5">
+                  <span className="text-4xl font-bold tracking-tight">{item.price}</span>
+                  <span className="mb-1 text-sm text-muted-foreground">{item.cadence}</span>
+                </div>
+                <p className="mb-6 text-xs text-muted-foreground">{item.description}</p>
 
-                <CardContent className="flex-1 pb-3">
-                  <ul className="space-y-2.5">
-                    {item.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2.5 text-sm">
-                        <Check className={[
-                          "mt-0.5 size-4 shrink-0",
-                          item.featured ? "text-primary" : "text-muted-foreground",
-                        ].join(" ")} />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
+                {/* Features */}
+                <ul className="mb-6 flex-1 space-y-2.5">
+                  {item.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2.5 text-sm">
+                      <Check className={[
+                        "mt-0.5 size-4 shrink-0",
+                        item.featured ? "text-primary" : "text-muted-foreground",
+                      ].join(" ")} />
+                      <span className="leading-snug">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
 
-                <CardContent className="pt-0">
+                {/* CTA */}
+                {item.ctaHref ? (
+                  <Button
+                    className="w-full"
+                    variant={item.featured ? "default" : "outline"}
+                    asChild
+                  >
+                    <Link href={item.ctaHref}>{item.cta}</Link>
+                  </Button>
+                ) : (
                   <Button
                     className={[
                       "w-full",
                       item.featured
-                        ? "shadow-[0_0_20px_theme(colors.primary/25%)] hover:shadow-[0_0_28px_theme(colors.primary/40%)]"
+                        ? "shadow-[0_0_20px_theme(colors.primary/30%)] hover:shadow-[0_0_30px_theme(colors.primary/50%)] transition-shadow"
                         : "",
                     ].join(" ")}
                     variant={item.featured ? "default" : "outline"}
-                    onClick={() => startCheckout(item.plan)}
+                    onClick={() => item.plan && startCheckout(item.plan)}
                     disabled={loadingPlan !== null}
                   >
                     {loadingPlan === item.plan ? (
@@ -221,15 +265,15 @@ export default function PricingPage() {
                     ) : (
                       <CreditCard className="size-4" />
                     )}
-                    {loadingPlan === item.plan ? "Opening…" : "Start free trial"}
+                    {loadingPlan === item.plan ? "Opening…" : item.cta}
                   </Button>
-                </CardContent>
-              </Card>
+                )}
+              </div>
             ))}
           </div>
 
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            Payments processed by Dodo Payments. Cancel any time.
+          <p className="mt-8 text-center text-xs text-muted-foreground">
+            Payments processed securely by Dodo Payments. Cancel any time from your dashboard.
           </p>
         </section>
       </div>
