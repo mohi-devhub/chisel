@@ -3,24 +3,21 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  ArrowRight,
   Check,
   Copy,
   Download,
   Hammer,
+  Library,
   Loader2,
   Search,
   Sparkles,
+  Users,
+  Zap,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -56,7 +53,10 @@ export default function Home() {
         body: JSON.stringify({ github_url: url.trim() }),
       });
 
-      const data = (await res.json()) as ScanResponse & { error?: string; message?: string };
+      const data = (await res.json()) as ScanResponse & {
+        error?: string;
+        message?: string;
+      };
 
       if (!res.ok) {
         if (data.error === "quota_exceeded") {
@@ -92,29 +92,35 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      {/* Background */}
+      <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-40" />
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[600px] w-[900px] rounded-full bg-primary/5 blur-3xl" />
+        <div className="absolute -top-60 left-1/2 -translate-x-1/2 h-[700px] w-[1000px] rounded-full bg-primary/6 blur-[120px]" />
+        <div className="absolute bottom-0 right-0 h-[400px] w-[600px] rounded-full bg-primary/3 blur-[100px]" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        {/* Header */}
-        <header className="flex items-center justify-between border-b border-border/60 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/40%)]">
-              <Hammer className="size-4" />
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+        {/* Nav */}
+        <header className="flex items-center justify-between pb-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/50%)]">
+              <Hammer className="size-3.5" />
             </div>
-            <div>
-              <span className="text-base font-semibold tracking-tight">Chisel</span>
-              <p className="text-xs text-muted-foreground leading-none mt-0.5">
-                Claude Code config layer
-              </p>
-            </div>
+            <span className="text-sm font-semibold tracking-tight">Chisel</span>
           </div>
-          <nav className="hidden items-center gap-1 sm:flex">
+          <nav className="hidden items-center gap-0.5 sm:flex">
             <Button
               variant="ghost"
               size="sm"
-              className="text-muted-foreground hover:text-foreground"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              asChild
+            >
+              <Link href="/registry">Registry</Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
               asChild
             >
               <Link href="/pricing">Pricing</Link>
@@ -122,75 +128,106 @@ export default function Home() {
             <Button
               variant="ghost"
               size="sm"
-              className="text-muted-foreground hover:text-foreground"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
               asChild
             >
               <Link href="/dashboard">Dashboard</Link>
             </Button>
-            <Button size="sm" className="ml-1" asChild>
+            <Button
+              size="sm"
+              className="ml-2 h-8 text-xs shadow-[0_0_16px_theme(colors.primary/30%)]"
+              asChild
+            >
               <Link href="/sign-in">Sign in</Link>
             </Button>
           </nav>
         </header>
 
-        {/* Hero + Scanner */}
-        <section className="py-10 sm:py-14">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+        {/* Hero */}
+        <section className="flex flex-col items-center pt-16 pb-14 text-center sm:pt-20">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-3.5 py-1.5 text-xs font-medium text-primary">
             <span className="size-1.5 rounded-full bg-primary animate-pulse" />
-            Free for your first scan
+            Free scan included — no sign-up required
           </div>
-          <h1 className="max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl leading-tight">
-            Configure Claude Code for{" "}
-            <span className="bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
-              any project in 60 seconds.
-            </span>
+
+          <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl leading-[1.1]">
+            The fastest way to configure{" "}
+            <span className="bg-gradient-to-r from-primary via-amber-300 to-primary bg-clip-text text-transparent">
+              Claude Code
+            </span>{" "}
+            for any repo.
           </h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-            Point Chisel at a GitHub repo and get a tailored{" "}
-            <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs text-foreground/80">
+
+          <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
+            Paste a GitHub URL. Chisel scans the codebase, detects your stack,
+            and generates a precise{" "}
+            <code className="rounded-md border border-border/60 bg-muted/60 px-1.5 py-0.5 font-mono text-xs text-foreground/80">
               CLAUDE.md
             </code>{" "}
-            that makes Claude Code effective from the first message.
+            — so Claude Code works the way you expect from message one.
           </p>
 
-          {/* URL input */}
+          {/* Scanner */}
           <form
             onSubmit={handleScan}
-            className="mt-6 flex w-full max-w-2xl gap-2"
+            className="mt-8 w-full max-w-2xl"
           >
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <div className="flex items-center gap-2 rounded-xl border border-border/80 bg-card/60 p-1.5 shadow-[0_0_0_1px_oklch(0.22_0_0),0_8px_32px_oklch(0_0_0_/0.4)] backdrop-blur-sm transition-shadow focus-within:shadow-[0_0_0_1px_theme(colors.primary/50%),0_8px_32px_oklch(0_0_0_/0.4)]">
+              <Search className="ml-2 size-4 shrink-0 text-muted-foreground" />
               <input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://github.com/owner/repo"
-                className="w-full rounded-lg border border-border bg-card pl-9 pr-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="flex-1 bg-transparent px-2 py-1.5 text-sm placeholder:text-muted-foreground/70 focus:outline-none"
                 disabled={scanning}
+                autoComplete="off"
+                spellCheck={false}
               />
+              <Button
+                type="submit"
+                disabled={!canScan}
+                className="shrink-0 shadow-[0_0_16px_theme(colors.primary/30%)] hover:shadow-[0_0_24px_theme(colors.primary/50%)] transition-shadow"
+              >
+                {scanning ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3.5" />
+                )}
+                {scanning ? "Scanning…" : "Scan repo"}
+              </Button>
             </div>
-            <Button
-              type="submit"
-              disabled={!canScan}
-              className="shadow-[0_0_20px_theme(colors.primary/25%)] hover:shadow-[0_0_28px_theme(colors.primary/40%)] transition-shadow"
-            >
-              {scanning ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Sparkles className="size-4" />
-              )}
-              {scanning ? "Scanning…" : "Scan"}
-            </Button>
           </form>
 
+          {/* Example repos */}
+          {!result && (
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+              <span className="opacity-60">Try:</span>
+              {[
+                { label: "vercel/next.js", url: "https://github.com/vercel/next.js" },
+                { label: "tiangolo/fastapi", url: "https://github.com/tiangolo/fastapi" },
+                { label: "rails/rails", url: "https://github.com/rails/rails" },
+              ].map(({ label, url: repoUrl }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setUrl(repoUrl)}
+                  className="rounded-md border border-border/50 bg-muted/30 px-2.5 py-1 font-mono text-xs text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {scanning && (
-            <p className="mt-3 text-xs text-muted-foreground animate-pulse">
-              Fetching repo structure and generating CLAUDE.md…
+            <p className="mt-4 text-xs text-muted-foreground animate-pulse">
+              Analyzing repository structure and generating CLAUDE.md…
             </p>
           )}
 
           {error && (
-            <div className="mt-3 max-w-2xl rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+            <div className="mt-4 w-full max-w-2xl rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive">
               {error}
             </div>
           )}
@@ -198,12 +235,12 @@ export default function Home() {
 
         {/* Results */}
         {result && (
-          <section className="grid gap-6 pb-12 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <section className="grid gap-6 pb-16 lg:grid-cols-[minmax(0,1fr)_320px]">
             {/* CLAUDE.md editor */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <div className="flex flex-wrap gap-1.5 items-center">
-                  <span className="text-sm font-medium text-foreground">CLAUDE.md</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold">CLAUDE.md</span>
                   {result.detected_stack.map((tag) => (
                     <Badge key={tag} variant="secondary" className="text-xs">
                       {tag}
@@ -211,12 +248,7 @@ export default function Home() {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCopy}
-                    className="gap-1.5"
-                  >
+                  <Button size="sm" variant="outline" onClick={handleCopy}>
                     {copied ? (
                       <Check className="size-3.5 text-green-500" />
                     ) : (
@@ -224,12 +256,7 @@ export default function Home() {
                     )}
                     {copied ? "Copied" : "Copy"}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleDownload}
-                    className="gap-1.5"
-                  >
+                  <Button size="sm" variant="outline" onClick={handleDownload}>
                     <Download className="size-3.5" />
                     Download
                   </Button>
@@ -239,115 +266,109 @@ export default function Home() {
               <textarea
                 value={claudeMd}
                 onChange={(e) => setClaudeMd(e.target.value)}
-                className="w-full min-h-[560px] rounded-lg border border-border bg-card px-4 py-3 font-mono text-xs leading-relaxed text-foreground/90 resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full min-h-[520px] rounded-xl border border-border/60 bg-card/80 px-4 py-3 font-mono text-xs leading-relaxed text-foreground/90 resize-y focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-sm"
                 spellCheck={false}
               />
               <p className="text-xs text-muted-foreground">
-                Editable — tweak before downloading. Drop it at the root of your repo.
+                Editable — tweak before downloading. Place it at the root of your repo.
               </p>
             </div>
 
-            {/* Sidebar: recommended items */}
+            {/* Sidebar */}
             <div className="flex flex-col gap-4">
               <div>
-                <h2 className="text-sm font-medium">Recommended for your stack</h2>
+                <h2 className="text-sm font-semibold">Recommended for your stack</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Skills and templates from the registry
                 </p>
               </div>
 
               {result.recommended_items.length === 0 ? (
-                <div className="rounded-lg border border-border/60 bg-card/50 px-4 py-6 text-center">
+                <div className="rounded-xl border border-border/50 bg-card/40 px-4 py-8 text-center">
                   <p className="text-xs text-muted-foreground">
                     No registry items yet for this stack.
                   </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 text-xs text-primary"
-                    asChild
-                  >
-                    <Link href="/marketplace">Browse marketplace</Link>
+                  <Button variant="ghost" size="sm" className="mt-2 text-xs" asChild>
+                    <Link href="/registry">Browse registry</Link>
                   </Button>
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
                   {result.recommended_items.map((item) => (
-                    <Card
+                    <div
                       key={item.id}
-                      className="rounded-xl border-border/60 bg-card/80 backdrop-blur-sm"
+                      className="rounded-xl border border-border/50 bg-card/80 p-4 transition-colors hover:bg-card"
                     >
-                      <CardHeader className="pb-2 pt-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-sm leading-snug">{item.name}</CardTitle>
-                          <Badge variant="outline" className="text-xs shrink-0">
-                            {item.type}
-                          </Badge>
-                        </div>
-                        <CardDescription className="text-xs line-clamp-2">
-                          {item.description}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="pb-4">
-                        <div className="flex flex-wrap gap-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-sm font-medium leading-snug">{item.name}</span>
+                        <Badge variant="outline" className="shrink-0 text-xs capitalize">
+                          {item.type}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        {item.description}
+                      </p>
+                      {(item.stack ?? []).length > 0 && (
+                        <div className="mt-2.5 flex flex-wrap gap-1">
                           {(item.stack ?? []).slice(0, 4).map((tag) => (
                             <Badge key={tag} variant="secondary" className="text-xs">
                               {tag}
                             </Badge>
                           ))}
                         </div>
-                      </CardContent>
-                    </Card>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
 
-              {/* Scan again */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2 text-xs text-muted-foreground"
+              <button
+                type="button"
+                className="mt-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground text-left"
                 onClick={() => {
                   setResult(null);
                   setClaudeMd("");
                   setUrl("");
                 }}
               >
-                Scan another repo
-              </Button>
+                ← Scan another repo
+              </button>
             </div>
           </section>
         )}
 
-        {/* Empty state hint */}
+        {/* Features section — shown only when no results */}
         {!result && !scanning && (
-          <section className="pb-12">
-            <p className="text-xs text-muted-foreground">
-              Try{" "}
-              <button
-                type="button"
-                className="underline underline-offset-2 hover:text-foreground"
-                onClick={() => setUrl("https://github.com/vercel/next.js")}
+          <section className="pb-16 pt-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <FeatureCard
+                icon={<Sparkles className="size-4" />}
+                title="Instant CLAUDE.md"
+                description="AI scans your repo structure, detects frameworks, and writes a precise config that makes Claude Code effective immediately."
+              />
+              <FeatureCard
+                icon={<Library className="size-4" />}
+                title="Skill Registry"
+                description="Browse community-built CLAUDE.md templates and skills. Download or publish your own to share with other developers."
+                href="/registry"
+              />
+              <FeatureCard
+                icon={<Users className="size-4" />}
+                title="Team Workspace"
+                description="Share configs and skills privately with your team. Keep your Claude Code setup consistent across every engineer."
+                href="/pricing"
+              />
+            </div>
+
+            <div className="mt-8 flex items-center justify-center">
+              <Link
+                href="/registry"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
-                github.com/vercel/next.js
-              </button>
-              {" · "}
-              <button
-                type="button"
-                className="underline underline-offset-2 hover:text-foreground"
-                onClick={() => setUrl("https://github.com/tiangolo/fastapi")}
-              >
-                github.com/tiangolo/fastapi
-              </button>
-              {" · "}
-              <button
-                type="button"
-                className="underline underline-offset-2 hover:text-foreground"
-                onClick={() => setUrl("https://github.com/rails/rails")}
-              >
-                github.com/rails/rails
-              </button>
-            </p>
+                Browse the registry
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
           </section>
         )}
       </div>
@@ -358,8 +379,8 @@ export default function Home() {
           <DialogHeader>
             <DialogTitle>Free scan used</DialogTitle>
             <DialogDescription>
-              You&apos;ve used your free scan. Sign up for a 14-day trial to scan unlimited
-              repositories and access recommended skills.
+              You&apos;ve used your free scan. Sign up for a 14-day trial to scan
+              unlimited repositories and access recommended skills.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -374,4 +395,38 @@ export default function Home() {
       </Dialog>
     </main>
   );
+}
+
+function FeatureCard({
+  icon,
+  title,
+  description,
+  href,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  href?: string;
+}) {
+  const content = (
+    <div className="group flex flex-col gap-3 rounded-xl border border-border/50 bg-card/40 p-5 transition-all hover:border-border/80 hover:bg-card/70">
+      <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        {icon}
+      </div>
+      <div>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          {href && (
+            <ArrowRight className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+          )}
+        </div>
+        <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+
+  if (href) {
+    return <Link href={href}>{content}</Link>;
+  }
+  return content;
 }
