@@ -62,29 +62,30 @@ export default async function DashboardPage({
 
   return (
     <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-40" />
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 right-0 h-[400px] w-[600px] rounded-full bg-primary/4 blur-3xl" />
+        <div className="absolute -top-60 right-0 h-[500px] w-[700px] rounded-full bg-primary/4 blur-[120px]" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-border/60 pb-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/40%)]">
+        <header className="flex items-center justify-between pb-6">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/50%)]">
               <Hammer className="size-4" />
             </div>
-            <span className="text-base font-semibold tracking-tight">Chisel</span>
+            <span className="text-sm font-semibold tracking-tight">Chisel</span>
           </Link>
-          <nav className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
+          <nav className="flex items-center gap-0.5">
+            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" asChild>
               <Link href="/registry">Registry</Link>
             </Button>
             {dashboard.workspace ? (
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
+              <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" asChild>
                 <Link href="/workspace">Workspace</Link>
               </Button>
             ) : null}
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
+            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" asChild>
               <Link href="/pricing">Pricing</Link>
             </Button>
           </nav>

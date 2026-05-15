@@ -57,40 +57,62 @@ export default async function RegistryPage({
 
   return (
     <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-40" />
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[500px] w-[700px] rounded-full bg-primary/4 blur-3xl" />
+        <div className="absolute -top-60 left-1/2 -translate-x-1/2 h-[600px] w-[800px] rounded-full bg-primary/5 blur-[120px]" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between border-b border-border/60 pb-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/40%)]">
-              <Hammer className="size-4" />
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+        <header className="flex items-center justify-between pb-6">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/50%)]">
+              <Hammer className="size-3.5" />
             </div>
-            <span className="text-base font-semibold tracking-tight">Chisel</span>
+            <span className="text-sm font-semibold tracking-tight">Chisel</span>
           </Link>
-          <nav className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" asChild>
+          <nav className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              asChild
+            >
               <Link href="/dashboard">Dashboard</Link>
             </Button>
-            <Button variant="ghost" size="sm" asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              asChild
+            >
               <Link href="/pricing">Pricing</Link>
+            </Button>
+            <Button
+              size="sm"
+              className="ml-2 h-8 text-xs shadow-[0_0_16px_theme(colors.primary/30%)]"
+              asChild
+            >
+              <Link href="/sign-in">Sign in</Link>
             </Button>
           </nav>
         </header>
 
         <section className="py-8">
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          {/* Page header */}
+          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <div className="mb-3 flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <div className="mb-4 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Library className="size-5" />
               </div>
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Registry</h1>
               <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-                CLAUDE.md templates and skills built by the Chisel community.
+                Community-built CLAUDE.md templates and skills for Claude Code.
               </p>
             </div>
-            <Button asChild>
+            <Button
+              asChild
+              className="shadow-[0_0_20px_theme(colors.primary/20%)] hover:shadow-[0_0_28px_theme(colors.primary/35%)] transition-shadow"
+            >
               <Link href="/dashboard">Publish</Link>
             </Button>
           </div>
@@ -114,12 +136,12 @@ export default async function RegistryPage({
               ))}
             </div>
           ) : (
-            <div className="mt-6 flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed border-border/50 px-4 text-center">
-              <div className="mb-3 flex size-12 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
+            <div className="mt-6 flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed border-border/40 px-4 text-center">
+              <div className="mb-3 flex size-11 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground">
                 {type === "template" ? (
-                  <FileText className="size-6" />
+                  <FileText className="size-5" />
                 ) : (
-                  <Sparkles className="size-6" />
+                  <Sparkles className="size-5" />
                 )}
               </div>
               <h2 className="text-sm font-medium">
@@ -182,18 +204,12 @@ export default async function RegistryPage({
 
 function TypeTabs({ current }: { current: RegistryItemType }) {
   return (
-    <div className="mb-4 inline-flex gap-1 rounded-lg border border-border/60 bg-card/60 p-1">
-      <Link
-        href="/registry?type=template"
-        className={tabClass(current === "template")}
-      >
+    <div className="mb-5 inline-flex gap-1 rounded-lg border border-border/50 bg-card/50 p-1">
+      <Link href="/registry?type=template" className={tabClass(current === "template")}>
         <FileText className="size-3.5" />
         Templates
       </Link>
-      <Link
-        href="/registry?type=skill"
-        className={tabClass(current === "skill")}
-      >
+      <Link href="/registry?type=skill" className={tabClass(current === "skill")}>
         <Sparkles className="size-3.5" />
         Skills
       </Link>
