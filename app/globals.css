@@ -3,23 +3,23 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.09 0 0);
+  --background: oklch(0.08 0 0);
   --foreground: oklch(0.97 0 0);
-  --card: oklch(0.12 0 0);
+  --card: oklch(0.11 0 0);
   --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.13 0 0);
+  --popover: oklch(0.12 0 0);
   --popover-foreground: oklch(0.97 0 0);
   --primary: oklch(0.78 0.17 65);
   --primary-foreground: oklch(0.09 0 0);
-  --secondary: oklch(0.18 0 0);
+  --secondary: oklch(0.16 0 0);
   --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.18 0 0);
-  --muted-foreground: oklch(0.55 0 0);
-  --accent: oklch(0.18 0 0);
+  --muted: oklch(0.16 0 0);
+  --muted-foreground: oklch(0.52 0 0);
+  --accent: oklch(0.16 0 0);
   --accent-foreground: oklch(0.97 0 0);
   --destructive: oklch(0.65 0.22 27);
-  --border: oklch(0.22 0 0);
-  --input: oklch(0.22 0 0);
+  --border: oklch(0.20 0 0);
+  --input: oklch(0.20 0 0);
   --ring: oklch(0.78 0.17 65);
   --radius: 0.625rem;
 }
@@ -53,17 +53,30 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* Subtle dot-grid background pattern */
+/* Subtle grid background */
+.bg-grid {
+  background-image:
+    linear-gradient(oklch(0.22 0 0 / 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.22 0 0 / 0.4) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Dot grid variant */
 .bg-dot-grid {
   background-image: radial-gradient(
     circle,
-    oklch(0.25 0 0) 1px,
+    oklch(0.28 0 0) 1px,
     transparent 1px
   );
-  background-size: 24px 24px;
+  background-size: 28px 28px;
 }
