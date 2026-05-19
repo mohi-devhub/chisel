@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       throw new Error(`Could not update payment: ${updateError.message}`);
     }
 
-    if (paymentRow.plan === "solo_monthly") {
+    if (paymentRow.plan === "solo_monthly" || paymentRow.plan === "solo_yearly") {
       const { error } = await supabase
         .from("users")
         .update({ tier: "solo", monthly_gen_count: 0, monthly_reset_at: new Date().toISOString() })
