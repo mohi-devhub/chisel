@@ -44,112 +44,143 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (event.type !== "payment.succeeded") {
-      return NextResponse.json({ received: true });
-    }
-
-    const payment = event.data;
-
-    if (payment.payload_type !== "Payment") {
-      return NextResponse.json(
-        { error: "invalid_payload" },
-        { status: 400 }
-      );
-    }
-
-    const checkoutSessionId = payment.checkout_session_id;
-    const paymentId = payment.payment_id;
-
-    if (!checkoutSessionId || !paymentId) {
-      return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
-    }
-
     const supabase = createClient();
 
-    const { data: paymentRow, error: paymentError } = await supabase
-      .from("payments")
-      .select("id, user_id, plan, status")
-      .eq("dodo_checkout_session_id", checkoutSessionId)
-      .maybeSingle<{ id: string; user_id: string; plan: string; status: string }>();
+    switch (event.type) {
+      case "payment.succeeded": {
+        if (event.data.payload_type !== "Payment") break;
 
-    if (paymentError) {
-      throw new Error(`Could not look up payment: ${paymentError.message}`);
-    }
+        const payment = event.data;
+        const checkoutSessionId = payment.checkout_session_id;
+        const paymentId = payment.payment_id;
+        const subscriptionId = payment.subscription_id ?? null;
 
-    if (!paymentRow) {
-      return NextResponse.json(
-        { error: "payment_not_found" },
-        { status: 404 }
-      );
-    }
+        if (!checkoutSessionId || !paymentId) break;
 
-    // Idempotency — already processed
-    if (paymentRow.status === "paid") {
-      return NextResponse.json({ received: true });
-    }
+        const { data: paymentRow, error: lookupError } = await supabase
+          .from("payments")
+          .select("id, user_id, plan, status")
+          .eq("dodo_checkout_session_id", checkoutSessionId)
+          .maybeSingle<{ id: string; user_id: string; plan: string; status: string }>();
 
-    const { error: updateError } = await supabase
-      .from("payments")
-      .update({ status: "paid", dodo_payment_id: paymentId })
-      .eq("id", paymentRow.id);
+        if (lookupError) throw new Error(`Lookup failed: ${lookupError.message}`);
+        if (!paymentRow) break; // unknown session — ignore
+        if (paymentRow.status === "paid") break; // idempotent
 
-    if (updateError) {
-      throw new Error(`Could not update payment: ${updateError.message}`);
-    }
+        await supabase
+          .from("payments")
+          .update({
+            status: "paid",
+            dodo_payment_id: paymentId,
+            ...(subscriptionId && { dodo_subscription_id: subscriptionId }),
+          })
+          .eq("id", paymentRow.id);
 
-    if (paymentRow.plan === "solo_monthly" || paymentRow.plan === "solo_yearly") {
-      const { error } = await supabase
-        .from("users")
-        .update({ tier: "solo", monthly_gen_count: 0, monthly_reset_at: new Date().toISOString() })
-        .eq("id", paymentRow.user_id);
-
-      if (error) {
-        throw new Error(`Could not upgrade user to solo: ${error.message}`);
-      }
-    } else if (paymentRow.plan === "team_monthly") {
-      const { data: userRow, error: userError } = await supabase
-        .from("users")
-        .select("email")
-        .eq("id", paymentRow.user_id)
-        .single<{ email: string }>();
-
-      if (userError) {
-        throw new Error(`Could not fetch user for team creation: ${userError.message}`);
+        await upgradeTier(supabase, paymentRow.user_id, paymentRow.plan);
+        break;
       }
 
-      const orgName = userRow.email.split("@")[0] + "'s Team";
+      case "payment.failed":
+      case "payment.cancelled": {
+        if (event.data.payload_type !== "Payment") break;
 
-      const { data: orgRow, error: orgError } = await supabase
-        .from("organizations")
-        .insert({ name: orgName, owner_id: paymentRow.user_id })
-        .select("id")
-        .single<{ id: string }>();
+        const checkoutSessionId = event.data.checkout_session_id;
+        if (!checkoutSessionId) break;
 
-      if (orgError) {
-        throw new Error(`Could not create organization: ${orgError.message}`);
+        await supabase
+          .from("payments")
+          .update({ status: "failed" })
+          .eq("dodo_checkout_session_id", checkoutSessionId)
+          .eq("status", "pending");
+        break;
       }
 
-      const { error: memberError } = await supabase
-        .from("org_members")
-        .insert({ org_id: orgRow.id, user_id: paymentRow.user_id, role: "owner" });
+      case "subscription.active": {
+        if (event.data.payload_type !== "Subscription") break;
 
-      if (memberError) {
-        throw new Error(`Could not add org owner: ${memberError.message}`);
+        const sub = event.data;
+        const userId = sub.metadata?.user_id;
+        const plan = sub.metadata?.plan;
+        if (!userId || !plan) break;
+
+        // Update subscription ID on the matching payment row (may already be set by payment.succeeded)
+        await supabase
+          .from("payments")
+          .update({ dodo_subscription_id: sub.subscription_id })
+          .eq("user_id", userId)
+          .eq("plan", plan)
+          .is("dodo_subscription_id", null)
+          .eq("status", "paid");
+
+        // Ensure tier is set correctly (idempotent)
+        await upgradeTier(supabase, userId, plan);
+        break;
       }
 
-      const { error: tierError } = await supabase
-        .from("users")
-        .update({
-          tier: "team_owner",
-          org_id: orgRow.id,
-          monthly_gen_count: 0,
-          monthly_reset_at: new Date().toISOString(),
-        })
-        .eq("id", paymentRow.user_id);
+      case "subscription.renewed": {
+        if (event.data.payload_type !== "Subscription") break;
 
-      if (tierError) {
-        throw new Error(`Could not upgrade user to team_owner: ${tierError.message}`);
+        // Renewal fired — subscription is still active. Reset monthly quota.
+        const sub = event.data;
+        const userId = sub.metadata?.user_id;
+        if (!userId) break;
+
+        await supabase
+          .from("users")
+          .update({ monthly_gen_count: 0, monthly_reset_at: new Date().toISOString() })
+          .eq("id", userId);
+        break;
       }
+
+      case "subscription.cancelled":
+      case "subscription.expired": {
+        if (event.data.payload_type !== "Subscription") break;
+
+        const sub = event.data;
+        const metaUserId: string | undefined = sub.metadata?.user_id || undefined;
+
+        // Try metadata first, then look up via subscription_id in payments table
+        let resolvedUserId: string | undefined = metaUserId;
+        if (!resolvedUserId) {
+          const { data: row } = await supabase
+            .from("payments")
+            .select("user_id")
+            .eq("dodo_subscription_id", sub.subscription_id)
+            .maybeSingle<{ user_id: string }>();
+          resolvedUserId = row?.user_id;
+        }
+
+        if (!resolvedUserId) break;
+
+        await supabase
+          .from("users")
+          .update({ tier: "free" })
+          .eq("id", resolvedUserId);
+
+        await supabase
+          .from("payments")
+          .update({ status: "cancelled" })
+          .eq("dodo_subscription_id", sub.subscription_id);
+        break;
+      }
+
+      case "subscription.failed":
+      case "subscription.on_hold": {
+        if (event.data.payload_type !== "Subscription") break;
+
+        const sub = event.data;
+
+        await supabase
+          .from("payments")
+          .update({ status: "failed" })
+          .eq("dodo_subscription_id", sub.subscription_id)
+          .eq("status", "paid");
+        break;
+      }
+
+      default:
+        // Unhandled event types — acknowledge receipt
+        break;
     }
 
     return NextResponse.json({ received: true });
@@ -161,5 +192,58 @@ export async function POST(request: NextRequest) {
       { error: "webhook_failed", details: message },
       { status: 500 }
     );
+  }
+}
+
+async function upgradeTier(
+  supabase: ReturnType<typeof import("@/lib/supabase/server").createClient>,
+  userId: string,
+  plan: string
+) {
+  if (plan === "solo_monthly" || plan === "solo_yearly") {
+    const { error } = await supabase
+      .from("users")
+      .update({ tier: "solo", monthly_gen_count: 0, monthly_reset_at: new Date().toISOString() })
+      .eq("id", userId);
+    if (error) throw new Error(`Could not upgrade to solo: ${error.message}`);
+  } else if (plan === "team_monthly") {
+    // Check if org already exists for this user
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("org_id, email")
+      .eq("id", userId)
+      .single<{ org_id: string | null; email: string }>();
+
+    if (existingUser?.org_id) {
+      // Already has an org — just ensure tier
+      await supabase
+        .from("users")
+        .update({ tier: "team_owner", monthly_gen_count: 0, monthly_reset_at: new Date().toISOString() })
+        .eq("id", userId);
+      return;
+    }
+
+    const orgName = (existingUser?.email?.split("@")[0] ?? "My") + "'s Team";
+
+    const { data: orgRow, error: orgError } = await supabase
+      .from("organizations")
+      .insert({ name: orgName, owner_id: userId })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (orgError) throw new Error(`Could not create organization: ${orgError.message}`);
+
+    const { error: memberError } = await supabase
+      .from("org_members")
+      .insert({ org_id: orgRow.id, user_id: userId, role: "owner" });
+
+    if (memberError) throw new Error(`Could not add org owner: ${memberError.message}`);
+
+    const { error: tierError } = await supabase
+      .from("users")
+      .update({ tier: "team_owner", org_id: orgRow.id, monthly_gen_count: 0, monthly_reset_at: new Date().toISOString() })
+      .eq("id", userId);
+
+    if (tierError) throw new Error(`Could not upgrade to team_owner: ${tierError.message}`);
   }
 }

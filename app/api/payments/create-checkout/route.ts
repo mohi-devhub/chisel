@@ -34,24 +34,21 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient();
 
-    // Idempotency: if a pending checkout for this user+plan already exists,
-    // re-use it instead of creating a duplicate Dodo session.
+    // Idempotency: reuse a pending checkout if it has a stored checkout_url
     const { data: existing } = await supabase
       .from("payments")
-      .select("dodo_checkout_session_id, plan")
+      .select("dodo_checkout_session_id, checkout_url, plan")
       .eq("user_id", userId)
       .eq("plan", body.plan)
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle<{ dodo_checkout_session_id: string; plan: string }>();
+      .maybeSingle<{ dodo_checkout_session_id: string; checkout_url: string | null; plan: string }>();
 
-    if (existing?.dodo_checkout_session_id) {
+    if (existing?.dodo_checkout_session_id && existing.checkout_url) {
       const details = PLAN_DETAILS[body.plan];
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
       return NextResponse.json({
-        checkout_url: `https://checkout.dodopayments.com/buy/${existing.dodo_checkout_session_id}?redirect_url=${encodeURIComponent(`${appUrl}/dashboard?payment=success`)}`,
+        checkout_url: existing.checkout_url,
         checkout_session_id: existing.dodo_checkout_session_id,
         plan: body.plan,
         name: details.label,
@@ -70,6 +67,7 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase.from("payments").insert({
       user_id: userId,
       dodo_checkout_session_id: session.session_id,
+      checkout_url: session.checkout_url ?? null,
       plan: body.plan,
       status: "pending",
     });
