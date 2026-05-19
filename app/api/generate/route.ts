@@ -6,11 +6,15 @@ import { getFingerprint } from "@/lib/fingerprint";
 import { generateSkill } from "@/lib/openai";
 import { packageSkill } from "@/lib/packaging";
 import { checkUserQuota, consumeUserQuota } from "@/lib/quota";
+import { getClientIp, ipKey, rateLimit } from "@/lib/ratelimit";
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserRecord } from "@/lib/users";
 import type { GenerateRequest, GeneratedSkill } from "@/types";
 
 export const runtime = "nodejs";
+
+// 5 generate requests per user/IP per minute
+const GEN_RATE_LIMIT = { limit: 5, windowMs: 60_000 };
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +27,19 @@ export async function POST(request: NextRequest) {
 
     const fingerprint = getFingerprint(request);
     const { userId } = await auth();
+
+    // Rate limit by user ID when authenticated, otherwise by IP
+    const rlKey = userId ? ipKey(userId, "gen") : ipKey(getClientIp(request), "gen");
+    const { allowed, retryAfterMs } = rateLimit(rlKey, GEN_RATE_LIMIT.limit, GEN_RATE_LIMIT.windowMs);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "rate_limit", message: "Too many requests — please wait a moment." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(Math.ceil((retryAfterMs ?? 60_000) / 1000)) },
+        }
+      );
+    }
     const user = userId ? await ensureUserRecord(userId, fingerprint) : null;
     let effectiveTier = user?.tier ?? "free";
 

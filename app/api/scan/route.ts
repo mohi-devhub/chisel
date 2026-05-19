@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getFingerprint } from "@/lib/fingerprint";
 import { buildRepoContext, parseGitHubUrl } from "@/lib/github";
 import { getEffectiveTier } from "@/lib/quota";
+import { getClientIp, ipKey, rateLimit } from "@/lib/ratelimit";
 import { scanRepo } from "@/lib/scanner";
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserRecord } from "@/lib/users";
@@ -12,9 +13,28 @@ import type { RecommendedItem, ScanResponse } from "@/types";
 export const runtime = "nodejs";
 
 const MAX_ANONYMOUS_SCANS = 1;
+// 10 scan requests per IP per minute
+const SCAN_RATE_LIMIT = { limit: 10, windowMs: 60_000 };
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit by IP
+    const ip = getClientIp(request);
+    const { allowed, retryAfterMs } = rateLimit(
+      ipKey(ip, "scan"),
+      SCAN_RATE_LIMIT.limit,
+      SCAN_RATE_LIMIT.windowMs
+    );
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "rate_limit", message: "Too many requests — please wait a moment." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(Math.ceil((retryAfterMs ?? 60_000) / 1000)) },
+        }
+      );
+    }
+
     const body = (await request.json()) as { github_url?: string };
 
     if (!body.github_url || typeof body.github_url !== "string") {
