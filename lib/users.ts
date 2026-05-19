@@ -27,13 +27,13 @@ export async function ensureUserRecord(userId: string, fingerprint: string) {
         .update({ gen_count: anonymousCount })
         .eq("id", userId)
         .select("*")
-        .single<User>();
+        .maybeSingle<User>();
 
       if (error) {
         throw new Error(`Could not carry over anonymous quota: ${error.message}`);
       }
 
-      return data;
+      return data ?? existing;
     }
 
     return existing;
@@ -47,10 +47,8 @@ export async function ensureUserRecord(userId: string, fingerprint: string) {
     clerkUser?.emailAddresses[0]?.emailAddress ??
     `${userId}@clerk.local`;
 
-  // Use upsert to handle the race condition where two concurrent requests
-  // both find no existing record and try to create one simultaneously.
-  // ignoreDuplicates: false so we get the row back either way.
-  const { data, error } = await supabase
+  // Upsert to handle concurrent first-request races gracefully.
+  const { error: upsertError } = await supabase
     .from("users")
     .upsert(
       {
@@ -62,45 +60,29 @@ export async function ensureUserRecord(userId: string, fingerprint: string) {
         trial_ends_at: new Date(Date.now() + TRIAL_DURATION_MS).toISOString(),
       },
       { onConflict: "id", ignoreDuplicates: true }
-    )
+    );
+
+  if (upsertError) {
+    throw new Error(`Could not create user: ${upsertError.message}`);
+  }
+
+  // Re-fetch the row (covers both the just-inserted case and the race-condition
+  // case where another request inserted first).
+  const { data: fetched, error: fetchError } = await supabase
+    .from("users")
     .select("*")
-    .single<User>();
+    .eq("id", userId)
+    .maybeSingle<User>();
 
-  if (error) {
-    // Another request won the race and inserted first — re-fetch the existing row.
-    if (error.code === "23505" || error.code === "PGRST116") {
-      const { data: refetched, error: refetchError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .single<User>();
-
-      if (refetchError) {
-        throw new Error(`Could not load user after conflict: ${refetchError.message}`);
-      }
-
-      return refetched;
-    }
-
-    throw new Error(`Could not create user: ${error.message}`);
+  if (fetchError) {
+    throw new Error(`Could not load user after upsert: ${fetchError.message}`);
   }
 
-  if (!data) {
-    // ignoreDuplicates suppressed the insert — re-fetch the existing row.
-    const { data: refetched, error: refetchError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .single<User>();
-
-    if (refetchError) {
-      throw new Error(`Could not load user after upsert: ${refetchError.message}`);
-    }
-
-    return refetched;
+  if (!fetched) {
+    throw new Error(`User record missing after upsert for ${userId}`);
   }
 
-  return data;
+  return fetched;
 }
 
 async function getAnonymousGenerationCount(fingerprint: string) {
