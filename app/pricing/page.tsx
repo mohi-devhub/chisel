@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, CreditCard, Loader2, Sparkles, Users, Zap } from "lucide-react";
+import { Check, CreditCard, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { SiteNav } from "@/components/ui/site-nav";
+import { cn } from "@/lib/utils";
 import type { Plan } from "@/types";
 
 interface CheckoutResponse {
@@ -19,7 +18,13 @@ interface CheckoutResponse {
 
 type BillingCycle = "monthly" | "yearly";
 
-const SOLO_MONTHLY_FEATURES = [
+const FREE_FEATURES = [
+  "1 free repo scan",
+  "Download generated CLAUDE.md",
+  "Browse the registry",
+];
+
+const SOLO_FEATURES = [
   "Unlimited repo scans",
   "30 skill generations / month",
   "Full skill structure (scripts, references, assets)",
@@ -44,13 +49,11 @@ export default function PricingPage() {
 
   const soloPlan: Plan = billing === "yearly" ? "solo_yearly" : "solo_monthly";
   const soloPrice = billing === "yearly" ? "$79" : "$9";
-  const soloCadence = billing === "yearly" ? "/ year" : "/ month";
-  const soloSavings = billing === "yearly";
+  const soloCadence = billing === "yearly" ? "/year" : "/month";
 
   const teamPlan: Plan = billing === "yearly" ? "team_yearly" : "team_monthly";
   const teamPrice = billing === "yearly" ? "$429" : "$49";
-  const teamCadence = billing === "yearly" ? "/ year" : "/ month";
-  const teamSavings = billing === "yearly";
+  const teamCadence = billing === "yearly" ? "/year" : "/month";
 
   async function startCheckout(plan: Plan) {
     setLoadingPlan(plan);
@@ -61,12 +64,17 @@ export default function PricingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),
       });
-      const payload = await response.json();
+      if (response.status === 401) { router.push("/sign-in"); return; }
+      let payload: CheckoutResponse & { message?: string; details?: string };
+      try {
+        payload = await response.json();
+      } catch {
+        throw new Error("Server error — please try again.");
+      }
       if (!response.ok) {
-        if (response.status === 401) { router.push("/sign-in"); return; }
         throw new Error(payload.message ?? payload.details ?? "Could not start checkout.");
       }
-      window.location.assign((payload as CheckoutResponse).checkout_url);
+      window.location.assign(payload.checkout_url);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not start checkout.");
       setLoadingPlan(null);
@@ -76,10 +84,6 @@ export default function PricingPage() {
   return (
     <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-grid" />
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{ background: "radial-gradient(ellipse 60% 40% at 50% -10%, oklch(0.78 0.17 65 / 0.1) 0%, transparent 70%)" }}
-      />
 
       <div className="relative mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
         <SiteNav
@@ -91,51 +95,48 @@ export default function PricingPage() {
           cta={{ label: "Sign in", href: "/sign-in" }}
         />
 
-        <section className="py-10">
+        <section className="py-12">
           {/* Hero */}
           <div className="mb-10 text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-3.5 py-1.5 text-xs font-medium text-primary">
-              <Zap className="size-3" />
-              14-day free trial on every paid plan
-            </div>
             <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
-              Simple,{" "}
-              <span className="bg-gradient-to-r from-primary via-amber-300 to-primary bg-clip-text text-transparent">
-                transparent
-              </span>{" "}
-              pricing
+              Choose Your Plan
             </h1>
-            <p className="mt-4 text-sm text-muted-foreground">
-              No credit card required to start. Cancel any time.
+            <p className="mt-3 text-sm text-muted-foreground">
+              Affordable and adaptable pricing to suit your goals.
             </p>
 
             {/* Billing toggle */}
-            <div className="mt-6 inline-flex items-center gap-1 rounded-xl border border-border/50 bg-card/50 p-1">
+            <div className="mt-6 inline-flex items-center rounded-full border border-border/60 bg-card p-1 text-sm">
               <button
                 type="button"
                 onClick={() => setBilling("monthly")}
-                className={[
-                  "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
+                className={cn(
+                  "rounded-full px-4 py-1.5 font-medium transition-all",
                   billing === "monthly"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                ].join(" ")}
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                Monthly
+                Bill monthly
               </button>
               <button
                 type="button"
                 onClick={() => setBilling("yearly")}
-                className={[
-                  "flex items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
+                className={cn(
+                  "flex items-center gap-2 rounded-full px-4 py-1.5 font-medium transition-all",
                   billing === "yearly"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                ].join(" ")}
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                Yearly
-                <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-primary">
-                  Save 27%
+                Bill annually
+                <span className={cn(
+                  "rounded-full px-1.5 py-0.5 text-xs font-bold",
+                  billing === "yearly"
+                    ? "bg-black/20 text-primary-foreground"
+                    : "bg-primary/15 text-primary"
+                )}>
+                  27% OFF
                 </span>
               </button>
             </div>
@@ -148,57 +149,50 @@ export default function PricingPage() {
           )}
 
           {/* Plans */}
-          <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-3">
+          <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-3 lg:items-stretch">
             {/* Free */}
             <PlanCard
-              icon={<Sparkles className="size-4" />}
               name="Free"
+              description="For individuals and small teams getting started."
               price="$0"
-              cadence="forever"
-              description="Try Chisel before you commit."
-              features={[
-                "1 free repo scan",
-                "Download generated CLAUDE.md",
-                "Browse the registry",
-              ]}
+              cadence="/month"
+              features={FREE_FEATURES}
               cta="Start scanning"
               ctaHref="/"
+              variant="default"
             />
 
-            {/* Solo */}
+            {/* Solo — recommended */}
             <PlanCard
-              icon={<Zap className="size-4" />}
               name="Solo"
+              description="For individual developers who live in Claude Code."
               price={soloPrice}
               cadence={soloCadence}
-              description="For individual developers who live in Claude Code."
-              features={SOLO_MONTHLY_FEATURES}
-              savings={soloSavings ? "~$29 saved vs monthly" : undefined}
+              features={SOLO_FEATURES}
               cta="Start free trial"
               onCta={() => startCheckout(soloPlan)}
               loading={loadingPlan === soloPlan}
               disabled={loadingPlan !== null}
+              variant="featured"
+              recommended="Recommended for you"
             />
 
             {/* Team */}
             <PlanCard
-              icon={<Users className="size-4" />}
               name="Team"
+              description="Shared config layer for your entire engineering team."
               price={teamPrice}
               cadence={teamCadence}
-              description="Shared config layer for your entire engineering team."
               features={TEAM_FEATURES}
-              savings={teamSavings ? "~$159 saved vs monthly" : undefined}
-              badge="Most popular"
-              featured
               cta="Start free trial"
               onCta={() => startCheckout(teamPlan)}
               loading={loadingPlan === teamPlan}
               disabled={loadingPlan !== null}
+              variant="default"
             />
           </div>
 
-          <p className="mt-8 text-center text-xs text-muted-foreground">
+          <p className="mt-10 text-center text-xs text-muted-foreground">
             Payments processed securely by Dodo Payments. Cancel any time from your dashboard.
           </p>
         </section>
@@ -208,97 +202,94 @@ export default function PricingPage() {
 }
 
 function PlanCard({
-  icon,
   name,
+  description,
   price,
   cadence,
-  description,
   features,
-  savings,
-  badge,
-  featured,
+  recommended,
+  variant,
   cta,
   ctaHref,
   onCta,
   loading,
   disabled,
 }: {
-  icon: React.ReactNode;
   name: string;
+  description: string;
   price: string;
   cadence: string;
-  description: string;
   features: string[];
-  savings?: string;
-  badge?: string;
-  featured?: boolean;
+  recommended?: string;
+  variant: "default" | "featured";
   cta: string;
   ctaHref?: string;
   onCta?: () => void;
   loading?: boolean;
   disabled?: boolean;
 }) {
+  const isFeatured = variant === "featured";
+
   return (
     <div
-      className={[
-        "relative flex flex-col rounded-2xl border p-6 transition-all duration-200",
-        featured
-          ? "border-primary/50 bg-primary/5 shadow-[0_0_40px_theme(colors.primary/12%)]"
-          : "border-border/50 bg-card/50",
-      ].join(" ")}
+      className={cn(
+        "group relative flex flex-col rounded-2xl border p-6 transition-all duration-200 cursor-default",
+        isFeatured
+          ? "border-primary/50 bg-card ring-1 ring-primary/20 hover:-translate-y-1 hover:shadow-[0_8px_32px_theme(colors.primary/20%)] hover:border-primary/70"
+          : "border-border/60 bg-card hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:border-border"
+      )}
     >
-      {badge && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <Badge className="bg-primary text-primary-foreground border-0 shadow-[0_0_12px_theme(colors.primary/40%)]">
-            {badge}
-          </Badge>
-        </div>
+      {recommended && (
+        <p className="mb-4 text-xs font-semibold tracking-wide text-primary uppercase">
+          {recommended}
+        </p>
       )}
 
-      <div className="mb-4 flex items-center gap-2.5">
-        <div className={[
-          "flex size-8 items-center justify-center rounded-lg",
-          featured ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground",
-        ].join(" ")}>
-          {icon}
-        </div>
-        <span className={["text-base font-semibold", featured ? "text-primary" : ""].join(" ")}>
-          {name}
-        </span>
+      <div className="mb-1">
+        <h2 className="text-lg font-bold">{name}</h2>
+        <p className="mt-1 text-sm text-muted-foreground leading-snug">{description}</p>
       </div>
 
-      <div className="mb-1 flex items-end gap-1.5">
-        <span className="text-4xl font-bold tracking-tight">{price}</span>
-        <span className="mb-1 text-sm text-muted-foreground">{cadence}</span>
+      <div className="my-5 flex items-end gap-1">
+        <span className="text-5xl font-black tracking-tight">{price}</span>
+        <span className="mb-1.5 text-sm text-muted-foreground">{cadence}</span>
       </div>
-      {savings && (
-        <p className="mb-1 text-xs font-medium text-primary">{savings}</p>
-      )}
-      <p className="mb-6 text-xs text-muted-foreground">{description}</p>
+
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        What&apos;s included:
+      </p>
 
       <ul className="mb-6 flex-1 space-y-2.5">
         {features.map((f) => (
           <li key={f} className="flex items-start gap-2.5 text-sm">
-            <Check className={["mt-0.5 size-4 shrink-0", featured ? "text-primary" : "text-muted-foreground"].join(" ")} />
+            <Check className={cn(
+              "mt-0.5 size-4 shrink-0",
+              isFeatured ? "text-primary" : "text-muted-foreground"
+            )} />
             <span className="leading-snug">{f}</span>
           </li>
         ))}
       </ul>
 
       {ctaHref ? (
-        <Button className="w-full" variant={featured ? "default" : "outline"} asChild>
-          <Link href={ctaHref}>{cta}</Link>
-        </Button>
+        <Link
+          href={ctaHref}
+          className="mt-auto flex w-full items-center justify-center gap-2 rounded-lg border border-primary/60 bg-black px-4 py-2.5 text-sm font-semibold text-foreground transition-all duration-200 hover:bg-primary hover:border-primary hover:text-black"
+        >
+          {cta}
+        </Link>
       ) : (
-        <Button
-          className={["w-full", featured ? "shadow-[0_0_20px_theme(colors.primary/30%)] hover:shadow-[0_0_30px_theme(colors.primary/50%)] transition-shadow" : ""].join(" ")}
-          variant={featured ? "default" : "outline"}
+        <button
+          type="button"
+          className="mt-auto flex w-full items-center justify-center gap-2 rounded-lg border border-primary/60 bg-black px-4 py-2.5 text-sm font-semibold text-foreground transition-all duration-200 hover:bg-primary hover:border-primary hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={onCta}
           disabled={disabled}
         >
-          {loading ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
-          {loading ? "Opening…" : cta}
-        </Button>
+          {loading
+            ? <><Loader2 className="size-4 animate-spin" /> Opening…</>
+            : <><CreditCard className="size-4" /> {cta}</>
+          }
+        </button>
       )}
     </div>
   );
