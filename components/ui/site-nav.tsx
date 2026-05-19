@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Hammer, Menu, X } from "lucide-react";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface NavLink {
   label: string;
@@ -12,23 +14,23 @@ interface NavLink {
 }
 
 interface SiteNavProps {
-  /** Always-visible nav links */
   links: NavLink[];
-  /** Links shown only when signed in (e.g. Dashboard on public pages) */
   authLinks?: NavLink[];
-  /** CTA shown to signed-out users. Defaults to "Sign in". */
   cta?: { label: string; href: string };
 }
 
 export function SiteNav({ links, authLinks = [], cta }: SiteNavProps) {
   const [open, setOpen] = useState(false);
   const { isSignedIn, isLoaded } = useUser();
+  const pathname = usePathname();
   const signInLink = cta ?? { label: "Sign in", href: "/sign-in" };
 
   const visibleLinks = [
     ...links,
     ...(isLoaded && isSignedIn ? authLinks : []),
   ];
+
+  const isActive = (href: string) => pathname === href;
 
   return (
     <header className="relative flex items-center justify-between py-5">
@@ -47,14 +49,18 @@ export function SiteNav({ links, authLinks = [], cta }: SiteNavProps) {
             key={href}
             variant="ghost"
             size="sm"
-            className="h-8 text-xs text-muted-foreground hover:text-foreground"
+            className={cn(
+              "h-8 text-xs transition-colors",
+              isActive(href)
+                ? "text-foreground underline underline-offset-4 decoration-primary/60"
+                : "text-muted-foreground hover:text-foreground"
+            )}
             asChild
           >
             <Link href={href}>{label}</Link>
           </Button>
         ))}
 
-        {/* Auth CTA */}
         {isLoaded && !isSignedIn && (
           <Button
             size="sm"
@@ -67,11 +73,7 @@ export function SiteNav({ links, authLinks = [], cta }: SiteNavProps) {
 
         {isLoaded && isSignedIn && (
           <div className="ml-3">
-            <UserButton
-              appearance={{
-                elements: { avatarBox: "size-8" },
-              }}
-            />
+            <UserButton appearance={{ elements: { avatarBox: "size-8" } }} />
           </div>
         )}
       </nav>
@@ -94,7 +96,12 @@ export function SiteNav({ links, authLinks = [], cta }: SiteNavProps) {
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className="rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+              className={cn(
+                "rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted/40",
+                isActive(href)
+                  ? "text-foreground underline underline-offset-4 decoration-primary/60"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
               {label}
             </Link>
@@ -112,11 +119,7 @@ export function SiteNav({ links, authLinks = [], cta }: SiteNavProps) {
 
           {isLoaded && isSignedIn && (
             <div className="mt-2 flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2">
-              <UserButton
-                appearance={{
-                  elements: { avatarBox: "size-6" },
-                }}
-              />
+              <UserButton appearance={{ elements: { avatarBox: "size-6" } }} />
               <span className="text-sm text-muted-foreground">Account & sign out</span>
             </div>
           )}
