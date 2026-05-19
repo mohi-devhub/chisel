@@ -14,8 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Chisel — Generate Claude Code Skills",
-  description: "Generate Claude Code skills from plain-English descriptions in seconds.",
+  title: {
+    default: "Chisel — Claude Code config layer",
+    template: "%s — Chisel",
+  },
+  description:
+    "Scan any GitHub repo and get a precise CLAUDE.md that makes Claude Code effective from message one.",
+  openGraph: {
+    siteName: "Chisel",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({

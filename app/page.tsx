@@ -7,7 +7,6 @@ import {
   Check,
   Copy,
   Download,
-  Hammer,
   Library,
   Loader2,
   Search,
@@ -26,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { SiteNav } from "@/components/ui/site-nav";
 import type { ScanResponse } from "@/types";
 
 export default function Home() {
@@ -100,39 +100,14 @@ export default function Home() {
       />
 
       <div className="relative mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-        {/* Nav */}
-        <header className="flex items-center justify-between py-5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_20px_theme(colors.primary/60%)]">
-              <Hammer className="size-3.5" />
-            </div>
-            <span className="text-sm font-semibold">Chisel</span>
-          </div>
-          <nav className="hidden items-center gap-0.5 sm:flex">
-            {[
-              { label: "Registry", href: "/registry" },
-              { label: "Pricing", href: "/pricing" },
-              { label: "Dashboard", href: "/dashboard" },
-            ].map(({ label, href }) => (
-              <Button
-                key={label}
-                variant="ghost"
-                size="sm"
-                className="h-8 text-xs text-muted-foreground hover:text-foreground"
-                asChild
-              >
-                <Link href={href}>{label}</Link>
-              </Button>
-            ))}
-            <Button
-              size="sm"
-              className="ml-3 h-8 text-xs px-4 shadow-[0_0_20px_theme(colors.primary/40%)] hover:shadow-[0_0_28px_theme(colors.primary/60%)] transition-shadow"
-              asChild
-            >
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-          </nav>
-        </header>
+        <SiteNav
+          links={[
+            { label: "Registry", href: "/registry" },
+            { label: "Pricing", href: "/pricing" },
+            { label: "Dashboard", href: "/dashboard" },
+          ]}
+          cta={{ label: "Sign in", href: "/sign-in" }}
+        />
 
         {/* ---- HERO ---- */}
         {!result && (

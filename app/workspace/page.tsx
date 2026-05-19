@@ -1,13 +1,15 @@
 import { auth } from "@clerk/nextjs/server";
-import { Hammer, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
 import { AddItemDialog, type SkillOption } from "@/components/workspace/AddItemDialog";
 import { WorkspaceItems } from "@/components/workspace/WorkspaceItems";
 import { WorkspaceMembers } from "@/components/workspace/WorkspaceMembers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SiteNav } from "@/components/ui/site-nav";
 import { createClient } from "@/lib/supabase/server";
 import {
   TEAM_SEAT_LIMIT,
@@ -16,8 +18,8 @@ import {
   getOrgMembers,
 } from "@/lib/workspace";
 
-export const metadata = {
-  title: "Workspace — Chisel",
+export const metadata: Metadata = {
+  title: "Workspace",
   description: "Private CLAUDE.md templates and skills shared with your team.",
 };
 
@@ -47,26 +49,14 @@ export default async function WorkspacePage() {
         <div className="absolute -top-60 right-0 h-[500px] w-[700px] rounded-full bg-primary/4 blur-[120px]" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between pb-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/50%)]">
-              <Hammer className="size-4" />
-            </div>
-            <span className="text-sm font-semibold tracking-tight">Chisel</span>
-          </Link>
-          <nav className="flex items-center gap-0.5">
-            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" asChild>
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" asChild>
-              <Link href="/registry">Registry</Link>
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" asChild>
-              <Link href="/pricing">Pricing</Link>
-            </Button>
-          </nav>
-        </header>
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 sm:px-6 lg:px-8">
+        <SiteNav
+          links={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Registry", href: "/registry" },
+            { label: "Pricing", href: "/pricing" },
+          ]}
+        />
 
         <section className="py-8">
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">

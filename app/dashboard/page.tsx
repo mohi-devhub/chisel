@@ -4,7 +4,6 @@ import {
   CreditCard,
   Download,
   FileArchive,
-  Hammer,
   LibraryBig,
   PackageCheck,
   Store,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
 import { PublishSkillDialog } from "@/components/marketplace/PublishSkillDialog";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SiteNav } from "@/components/ui/site-nav";
 import { getDashboardData, normalizeTier } from "@/lib/dashboard";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+  description: "Manage your Chisel account, generated skills, and marketplace publishing.",
+};
 
 export default async function DashboardPage({
   searchParams,
@@ -68,28 +74,13 @@ export default async function DashboardPage({
       </div>
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        {/* Header */}
-        <header className="flex items-center justify-between pb-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/50%)]">
-              <Hammer className="size-4" />
-            </div>
-            <span className="text-sm font-semibold tracking-tight">Chisel</span>
-          </Link>
-          <nav className="flex items-center gap-0.5">
-            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" asChild>
-              <Link href="/registry">Registry</Link>
-            </Button>
-            {dashboard.workspace ? (
-              <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" asChild>
-                <Link href="/workspace">Workspace</Link>
-              </Button>
-            ) : null}
-            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" asChild>
-              <Link href="/pricing">Pricing</Link>
-            </Button>
-          </nav>
-        </header>
+        <SiteNav
+          links={[
+            { label: "Registry", href: "/registry" },
+            ...(dashboard.workspace ? [{ label: "Workspace", href: "/workspace" }] : []),
+            { label: "Pricing", href: "/pricing" },
+          ]}
+        />
 
         <section className="py-8">
           {params.payment === "success" ? (
@@ -114,7 +105,7 @@ export default async function DashboardPage({
               asChild
               className="shadow-[0_0_20px_theme(colors.primary/20%)] hover:shadow-[0_0_28px_theme(colors.primary/35%)] transition-shadow"
             >
-              <Link href="/">
+              <Link href="/generate">
                 <PackageCheck className="size-4" />
                 Generate skill
               </Link>

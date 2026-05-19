@@ -1,9 +1,11 @@
-import { ChevronLeft, ChevronRight, FileText, Hammer, Library, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Library, Sparkles } from "lucide-react";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 import { RegistryCard } from "@/components/registry/RegistryCard";
 import { RegistryFilters } from "@/components/registry/RegistryFilters";
 import { Button } from "@/components/ui/button";
+import { SiteNav } from "@/components/ui/site-nav";
 import {
   REGISTRY_PAGE_SIZE,
   getRegistryItems,
@@ -14,8 +16,8 @@ import {
 const SORT_VALUES = new Set<RegistrySort>(["recent", "popular", "name"]);
 const TYPE_VALUES = new Set<RegistryItemType>(["skill", "template"]);
 
-export const metadata = {
-  title: "Registry — Chisel",
+export const metadata: Metadata = {
+  title: "Registry",
   description:
     "Browse CLAUDE.md templates and skills published by the Chisel community.",
 };
@@ -62,40 +64,14 @@ export default async function RegistryPage({
         <div className="absolute -top-60 left-1/2 -translate-x-1/2 h-[600px] w-[800px] rounded-full bg-primary/5 blur-[120px]" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between pb-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/50%)]">
-              <Hammer className="size-3.5" />
-            </div>
-            <span className="text-sm font-semibold tracking-tight">Chisel</span>
-          </Link>
-          <nav className="flex items-center gap-0.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs text-muted-foreground hover:text-foreground"
-              asChild
-            >
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs text-muted-foreground hover:text-foreground"
-              asChild
-            >
-              <Link href="/pricing">Pricing</Link>
-            </Button>
-            <Button
-              size="sm"
-              className="ml-2 h-8 text-xs shadow-[0_0_16px_theme(colors.primary/30%)]"
-              asChild
-            >
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-          </nav>
-        </header>
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 sm:px-6 lg:px-8">
+        <SiteNav
+          links={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Pricing", href: "/pricing" },
+          ]}
+          cta={{ label: "Sign in", href: "/sign-in" }}
+        />
 
         <section className="py-8">
           {/* Page header */}
