@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Hammer, Menu, X } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 
 interface NavLink {
@@ -13,24 +13,14 @@ interface NavLink {
 
 interface SiteNavProps {
   links: NavLink[];
-  /** If provided, renders a primary CTA button on the right when signed out */
+  /** CTA shown to signed-out users. Defaults to "Sign in". */
   cta?: { label: string; href: string };
 }
 
 export function SiteNav({ links, cta }: SiteNavProps) {
   const [open, setOpen] = useState(false);
   const { isSignedIn, isLoaded } = useUser();
-
-  // Determine the right-side action button
-  const actionButton = isLoaded
-    ? isSignedIn
-      ? { label: "Dashboard", href: "/dashboard" }
-      : (cta ?? { label: "Sign in", href: "/sign-in" })
-    : null;
-
-  const allLinks = isLoaded && isSignedIn
-    ? links.filter((l) => l.href !== "/dashboard") // avoid duplicate dashboard link
-    : links;
+  const signInLink = cta ?? { label: "Sign in", href: "/sign-in" };
 
   return (
     <header className="relative flex items-center justify-between py-5">
@@ -44,7 +34,7 @@ export function SiteNav({ links, cta }: SiteNavProps) {
 
       {/* Desktop nav */}
       <nav className="hidden items-center gap-0.5 sm:flex">
-        {allLinks.map(({ label, href }) => (
+        {links.map(({ label, href }) => (
           <Button
             key={href}
             variant="ghost"
@@ -55,14 +45,35 @@ export function SiteNav({ links, cta }: SiteNavProps) {
             <Link href={href}>{label}</Link>
           </Button>
         ))}
-        {actionButton && (
+
+        {isLoaded && !isSignedIn && (
           <Button
             size="sm"
             className="ml-3 h-8 text-xs px-4 shadow-[0_0_20px_theme(colors.primary/40%)] hover:shadow-[0_0_28px_theme(colors.primary/60%)] transition-shadow"
             asChild
           >
-            <Link href={actionButton.href}>{actionButton.label}</Link>
+            <Link href={signInLink.href}>{signInLink.label}</Link>
           </Button>
+        )}
+
+        {isLoaded && isSignedIn && (
+          <div className="ml-3 flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              asChild
+            >
+              <Link href="/dashboard">Dashboard</Link>
+            </Button>
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "size-8",
+                },
+              }}
+            />
+          </div>
         )}
       </nav>
 
@@ -79,7 +90,7 @@ export function SiteNav({ links, cta }: SiteNavProps) {
       {/* Mobile dropdown */}
       {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 flex flex-col gap-1 rounded-xl border border-border/60 bg-card/95 p-3 shadow-xl backdrop-blur-xl sm:hidden">
-          {allLinks.map(({ label, href }) => (
+          {links.map(({ label, href }) => (
             <Link
               key={href}
               href={href}
@@ -89,14 +100,35 @@ export function SiteNav({ links, cta }: SiteNavProps) {
               {label}
             </Link>
           ))}
-          {actionButton && (
+
+          {isLoaded && !isSignedIn && (
             <Link
-              href={actionButton.href}
+              href={signInLink.href}
               onClick={() => setOpen(false)}
               className="mt-1 rounded-lg bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground"
             >
-              {actionButton.label}
+              {signInLink.label}
             </Link>
+          )}
+
+          {isLoaded && isSignedIn && (
+            <>
+              <Link
+                href="/dashboard"
+                onClick={() => setOpen(false)}
+                className="mt-1 rounded-lg bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground"
+              >
+                Dashboard
+              </Link>
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2">
+                <UserButton
+                  appearance={{
+                    elements: { avatarBox: "size-6" },
+                  }}
+                />
+                <span className="text-sm text-muted-foreground">Account settings & sign out</span>
+              </div>
+            </>
           )}
         </div>
       )}
