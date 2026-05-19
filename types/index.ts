@@ -1,6 +1,6 @@
 export type Tier = "free" | "solo" | "team_owner" | "team_member";
 
-export type Plan = "solo_monthly" | "solo_yearly" | "team_monthly";
+export type Plan = "solo_monthly" | "solo_yearly" | "team_monthly" | "team_yearly";
 
 export interface GeneratedSkill {
   name: string;

@@ -47,6 +47,11 @@ export default function PricingPage() {
   const soloCadence = billing === "yearly" ? "/ year" : "/ month";
   const soloSavings = billing === "yearly";
 
+  const teamPlan: Plan = billing === "yearly" ? "team_yearly" : "team_monthly";
+  const teamPrice = billing === "yearly" ? "$429" : "$49";
+  const teamCadence = billing === "yearly" ? "/ year" : "/ month";
+  const teamSavings = billing === "yearly";
+
   async function startCheckout(plan: Plan) {
     setLoadingPlan(plan);
     setError("");
@@ -179,15 +184,16 @@ export default function PricingPage() {
             <PlanCard
               icon={<Users className="size-4" />}
               name="Team"
-              price="$49"
-              cadence="/ month"
+              price={teamPrice}
+              cadence={teamCadence}
               description="Shared config layer for your entire engineering team."
               features={TEAM_FEATURES}
+              savings={teamSavings ? "~$159 saved vs monthly" : undefined}
               badge="Most popular"
               featured
               cta="Start free trial"
-              onCta={() => startCheckout("team_monthly")}
-              loading={loadingPlan === "team_monthly"}
+              onCta={() => startCheckout(teamPlan)}
+              loading={loadingPlan === teamPlan}
               disabled={loadingPlan !== null}
             />
           </div>

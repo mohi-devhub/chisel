@@ -47,23 +47,32 @@ export async function ensureUserRecord(userId: string, fingerprint: string) {
     clerkUser?.emailAddresses[0]?.emailAddress ??
     `${userId}@clerk.local`;
 
+  const baseRecord = {
+    id: userId,
+    tier: "free",
+    gen_count: anonymousCount,
+    monthly_gen_count: 0,
+    trial_ends_at: new Date(Date.now() + TRIAL_DURATION_MS).toISOString(),
+  };
+
   // Upsert to handle concurrent first-request races gracefully.
   const { error: upsertError } = await supabase
     .from("users")
-    .upsert(
-      {
-        id: userId,
-        email,
-        tier: "free",
-        gen_count: anonymousCount,
-        monthly_gen_count: 0,
-        trial_ends_at: new Date(Date.now() + TRIAL_DURATION_MS).toISOString(),
-      },
-      { onConflict: "id", ignoreDuplicates: true }
-    );
+    .upsert({ ...baseRecord, email }, { onConflict: "id", ignoreDuplicates: true });
 
   if (upsertError) {
-    throw new Error(`Could not create user: ${upsertError.message}`);
+    // Email already belongs to a different user — retry with a unique fallback.
+    if (upsertError.code === "23505" && upsertError.message.includes("users_email_key")) {
+      const { error: retryError } = await supabase
+        .from("users")
+        .upsert(
+          { ...baseRecord, email: `${userId}@clerk.local` },
+          { onConflict: "id", ignoreDuplicates: true }
+        );
+      if (retryError) throw new Error(`Could not create user: ${retryError.message}`);
+    } else {
+      throw new Error(`Could not create user: ${upsertError.message}`);
+    }
   }
 
   // Re-fetch the row (covers both the just-inserted case and the race-condition

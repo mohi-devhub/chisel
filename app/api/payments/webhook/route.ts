@@ -206,7 +206,7 @@ async function upgradeTier(
       .update({ tier: "solo", monthly_gen_count: 0, monthly_reset_at: new Date().toISOString() })
       .eq("id", userId);
     if (error) throw new Error(`Could not upgrade to solo: ${error.message}`);
-  } else if (plan === "team_monthly") {
+  } else if (plan === "team_monthly" || plan === "team_yearly") {
     // Check if org already exists for this user
     const { data: existingUser } = await supabase
       .from("users")
