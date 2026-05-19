@@ -52,8 +52,8 @@ export default async function WorkspacePage() {
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 sm:px-6 lg:px-8">
         <SiteNav
           links={[
-            { label: "Dashboard", href: "/dashboard" },
             { label: "Registry", href: "/registry" },
+            { label: "Dashboard", href: "/dashboard" },
             { label: "Pricing", href: "/pricing" },
           ]}
         />

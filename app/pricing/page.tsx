@@ -80,8 +80,8 @@ export default function PricingPage() {
         <SiteNav
           links={[
             { label: "Registry", href: "/registry" },
-            { label: "Dashboard", href: "/dashboard" },
           ]}
+          authLinks={[{ label: "Dashboard", href: "/dashboard" }]}
           cta={{ label: "Sign in", href: "/sign-in" }}
         />
 

@@ -104,8 +104,8 @@ export default function Home() {
           links={[
             { label: "Registry", href: "/registry" },
             { label: "Pricing", href: "/pricing" },
-            { label: "Dashboard", href: "/dashboard" },
           ]}
+          authLinks={[{ label: "Dashboard", href: "/dashboard" }]}
           cta={{ label: "Sign in", href: "/sign-in" }}
         />
 

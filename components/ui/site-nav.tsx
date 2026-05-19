@@ -12,15 +12,23 @@ interface NavLink {
 }
 
 interface SiteNavProps {
+  /** Always-visible nav links */
   links: NavLink[];
+  /** Links shown only when signed in (e.g. Dashboard on public pages) */
+  authLinks?: NavLink[];
   /** CTA shown to signed-out users. Defaults to "Sign in". */
   cta?: { label: string; href: string };
 }
 
-export function SiteNav({ links, cta }: SiteNavProps) {
+export function SiteNav({ links, authLinks = [], cta }: SiteNavProps) {
   const [open, setOpen] = useState(false);
   const { isSignedIn, isLoaded } = useUser();
   const signInLink = cta ?? { label: "Sign in", href: "/sign-in" };
+
+  const visibleLinks = [
+    ...links,
+    ...(isLoaded && isSignedIn ? authLinks : []),
+  ];
 
   return (
     <header className="relative flex items-center justify-between py-5">
@@ -34,7 +42,7 @@ export function SiteNav({ links, cta }: SiteNavProps) {
 
       {/* Desktop nav */}
       <nav className="hidden items-center gap-0.5 sm:flex">
-        {links.map(({ label, href }) => (
+        {visibleLinks.map(({ label, href }) => (
           <Button
             key={href}
             variant="ghost"
@@ -46,6 +54,7 @@ export function SiteNav({ links, cta }: SiteNavProps) {
           </Button>
         ))}
 
+        {/* Auth CTA */}
         {isLoaded && !isSignedIn && (
           <Button
             size="sm"
@@ -57,20 +66,10 @@ export function SiteNav({ links, cta }: SiteNavProps) {
         )}
 
         {isLoaded && isSignedIn && (
-          <div className="ml-3 flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs text-muted-foreground hover:text-foreground"
-              asChild
-            >
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
+          <div className="ml-3">
             <UserButton
               appearance={{
-                elements: {
-                  avatarBox: "size-8",
-                },
+                elements: { avatarBox: "size-8" },
               }}
             />
           </div>
@@ -90,7 +89,7 @@ export function SiteNav({ links, cta }: SiteNavProps) {
       {/* Mobile dropdown */}
       {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 flex flex-col gap-1 rounded-xl border border-border/60 bg-card/95 p-3 shadow-xl backdrop-blur-xl sm:hidden">
-          {links.map(({ label, href }) => (
+          {visibleLinks.map(({ label, href }) => (
             <Link
               key={href}
               href={href}
@@ -112,23 +111,14 @@ export function SiteNav({ links, cta }: SiteNavProps) {
           )}
 
           {isLoaded && isSignedIn && (
-            <>
-              <Link
-                href="/dashboard"
-                onClick={() => setOpen(false)}
-                className="mt-1 rounded-lg bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground"
-              >
-                Dashboard
-              </Link>
-              <div className="mt-2 flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2">
-                <UserButton
-                  appearance={{
-                    elements: { avatarBox: "size-6" },
-                  }}
-                />
-                <span className="text-sm text-muted-foreground">Account settings & sign out</span>
-              </div>
-            </>
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2">
+              <UserButton
+                appearance={{
+                  elements: { avatarBox: "size-6" },
+                }}
+              />
+              <span className="text-sm text-muted-foreground">Account & sign out</span>
+            </div>
           )}
         </div>
       )}
