@@ -29,6 +29,9 @@ export interface GenerateRequest {
 export interface GenerateResponse {
   name: string;
   skill_md: string;
+  scripts: Array<{ filename: string; content: string }>;
+  references: Array<{ filename: string; content: string }>;
+  assets: Array<{ filename: string; content: string }>;
   zip_base64: string;
   filename: string;
   remaining: number;

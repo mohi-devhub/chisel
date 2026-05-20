@@ -190,9 +190,9 @@ export default function GeneratePage() {
             </div>
           </form>
 
-          {/* Right — preview */}
+          {/* Right — preview: key resets tab selection on each new generation */}
           <div className="flex flex-col">
-            <PreviewPane generated={generated} />
+            <PreviewPane key={generated?.name ?? "empty"} generated={generated} />
           </div>
         </div>
       </div>

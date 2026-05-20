@@ -84,6 +84,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         name: effectiveSkill.name,
         skill_md: effectiveSkill.skill_md,
+        scripts: effectiveSkill.scripts,
+        references: effectiveSkill.references,
+        assets: effectiveSkill.assets,
         zip_base64: zip.toString("base64"),
         filename: `${effectiveSkill.name}.skill`,
         remaining: updatedQuota.remaining,
