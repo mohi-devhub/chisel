@@ -75,8 +75,9 @@ export async function scanRepo(context: RepoContext): Promise<ScanResult> {
     try {
       const response = await client.chat.completions.create({
         model,
-        max_tokens: 4096,
+        max_tokens: 8192,
         temperature: 0,
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: buildScanPrompt(context, attempt) },

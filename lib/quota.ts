@@ -1,9 +1,33 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Tier, User } from "@/types";
 
-const SOLO_MONTHLY_LIMIT = 30;
-const TEAM_MONTHLY_LIMIT = 200;
 const MONTH_IN_MS = 30 * 24 * 60 * 60 * 1000;
+
+// Monthly skill generation limits per tier
+const GEN_LIMITS: Record<Tier, number> = {
+  free: 0,
+  solo: 7,
+  pro: 15,
+  team_owner: 200,
+  team_member: 200,
+};
+
+// Monthly repo scan limits per tier
+const SCAN_LIMITS: Record<Tier, number> = {
+  free: 0,
+  solo: 5,
+  pro: 25,
+  team_owner: 200,
+  team_member: 200,
+};
+
+export function getGenLimit(tier: Tier): number {
+  return GEN_LIMITS[tier] ?? 0;
+}
+
+export function getScanLimit(tier: Tier): number {
+  return SCAN_LIMITS[tier] ?? 0;
+}
 
 export interface AnonymousQuota {
   allowed: boolean;
@@ -75,10 +99,6 @@ export async function consumeAnonymousQuota(
 }
 
 export function getEffectiveTier(user: User): Tier {
-  if (user.trial_ends_at && new Date(user.trial_ends_at).getTime() > Date.now()) {
-    return "solo";
-  }
-
   return user.tier;
 }
 
@@ -95,10 +115,7 @@ export function checkUserQuota(user: User): UserQuota {
   }
 
   const monthlyCount = shouldResetMonthlyCount(user) ? 0 : user.monthly_gen_count;
-  const monthlyLimit =
-    effectiveTier === "team_owner" || effectiveTier === "team_member"
-      ? TEAM_MONTHLY_LIMIT
-      : SOLO_MONTHLY_LIMIT;
+  const monthlyLimit = getGenLimit(effectiveTier);
   const monthlyRemaining = Math.max(monthlyLimit - monthlyCount, 0);
 
   if (monthlyRemaining > 0) {
@@ -107,6 +124,34 @@ export function checkUserQuota(user: User): UserQuota {
       remaining: monthlyRemaining,
       effectiveTier,
     };
+  }
+
+  return {
+    allowed: false,
+    remaining: 0,
+    effectiveTier,
+    reason: "monthly_limit",
+  };
+}
+
+export function checkScanQuota(user: User): UserQuota {
+  const effectiveTier = getEffectiveTier(user);
+
+  if (effectiveTier === "free") {
+    return {
+      allowed: false,
+      remaining: 0,
+      effectiveTier,
+      reason: "plan_required",
+    };
+  }
+
+  const monthlyCount = shouldResetMonthlyCount(user) ? 0 : user.monthly_scan_count;
+  const monthlyLimit = getScanLimit(effectiveTier);
+  const monthlyRemaining = Math.max(monthlyLimit - monthlyCount, 0);
+
+  if (monthlyRemaining > 0) {
+    return { allowed: true, remaining: monthlyRemaining, effectiveTier };
   }
 
   return {

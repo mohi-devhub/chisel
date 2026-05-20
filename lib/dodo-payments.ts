@@ -11,13 +11,23 @@ export const PLAN_DETAILS: Record<
 > = {
   solo_monthly: {
     label: "Solo Monthly",
-    price: "$9/mo",
+    price: "$3/mo",
     productIdEnv: "DODO_SOLO_MONTHLY_PRODUCT_ID",
   },
   solo_yearly: {
     label: "Solo Yearly",
-    price: "$79/yr",
+    price: "$29/yr",
     productIdEnv: "DODO_SOLO_YEARLY_PRODUCT_ID",
+  },
+  pro_monthly: {
+    label: "Pro Monthly",
+    price: "$12/mo",
+    productIdEnv: "DODO_PRO_MONTHLY_PRODUCT_ID",
+  },
+  pro_yearly: {
+    label: "Pro Yearly",
+    price: "$99/yr",
+    productIdEnv: "DODO_PRO_YEARLY_PRODUCT_ID",
   },
   team_monthly: {
     label: "Team Monthly",

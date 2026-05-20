@@ -21,6 +21,16 @@ export interface DashboardSkill {
   created_at: string;
 }
 
+export interface DashboardScan {
+  id: string;
+  repo_owner: string;
+  repo_name: string;
+  repo_url: string;
+  branch: string | null;
+  detected_stack: string[];
+  created_at: string;
+}
+
 export interface PublishedSkill {
   id: string;
   skill_id: string;
@@ -43,6 +53,7 @@ export interface DashboardData {
     | "trial_ends_at"
   > | null;
   skills: DashboardSkill[];
+  scans: DashboardScan[];
   publishedSkills: PublishedSkill[];
   workspace: DashboardWorkspace | null;
 }
@@ -50,7 +61,7 @@ export interface DashboardData {
 export async function getDashboardData(userId: string): Promise<DashboardData> {
   const supabase = createClient();
 
-  const [userResult, skillsResult, publishedResult] = await Promise.all([
+  const [userResult, skillsResult, scansResult, publishedResult] = await Promise.all([
     supabase
       .from("users")
       .select(
@@ -64,6 +75,13 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .returns<DashboardSkill[]>(),
+    supabase
+      .from("scans")
+      .select("id, repo_owner, repo_name, repo_url, branch, detected_stack, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .returns<DashboardScan[]>(),
     supabase
       .from("marketplace_listings")
       .select(
@@ -82,6 +100,10 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
     throw new Error(`Could not load skills: ${skillsResult.error.message}`);
   }
 
+  if (scansResult.error) {
+    throw new Error(`Could not load scans: ${scansResult.error.message}`);
+  }
+
   if (publishedResult.error) {
     throw new Error(
       `Could not load published skills: ${publishedResult.error.message}`
@@ -91,6 +113,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
   return {
     user: userResult.data,
     skills: skillsResult.data ?? [],
+    scans: scansResult.data ?? [],
     publishedSkills: publishedResult.data ?? [],
     workspace: await getDashboardWorkspace(userId),
   };

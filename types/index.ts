@@ -1,6 +1,12 @@
-export type Tier = "free" | "solo" | "team_owner" | "team_member";
+export type Tier = "free" | "solo" | "pro" | "team_owner" | "team_member";
 
-export type Plan = "solo_monthly" | "solo_yearly" | "team_monthly" | "team_yearly";
+export type Plan =
+  | "solo_monthly"
+  | "solo_yearly"
+  | "pro_monthly"
+  | "pro_yearly"
+  | "team_monthly"
+  | "team_yearly";
 
 export interface GeneratedSkill {
   name: string;
@@ -48,6 +54,7 @@ export interface User {
   org_id: string | null;
   gen_count: number;
   monthly_gen_count: number;
+  monthly_scan_count: number;
   monthly_reset_at: string;
   trial_ends_at: string | null;
   created_at: string;

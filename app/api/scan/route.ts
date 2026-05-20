@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getFingerprint } from "@/lib/fingerprint";
 import { buildRepoContext, parseGitHubUrl } from "@/lib/github";
-import { getEffectiveTier } from "@/lib/quota";
+import { checkScanQuota, getEffectiveTier } from "@/lib/quota";
 import { getClientIp, ipKey, rateLimit } from "@/lib/ratelimit";
 import { scanRepo } from "@/lib/scanner";
 import { createClient } from "@/lib/supabase/server";
@@ -76,12 +76,24 @@ export async function POST(request: NextRequest) {
       }
     } else {
       const user = await ensureUserRecord(userId, fingerprint);
-      const effectiveTier = getEffectiveTier(user);
+      const quota = checkScanQuota(user);
 
-      if (effectiveTier === "free") {
+      if (!quota.allowed) {
+        if (quota.reason === "plan_required") {
+          return NextResponse.json(
+            {
+              error: "plan_required",
+              message: "Choose a plan to scan repositories",
+            },
+            { status: 403 }
+          );
+        }
         return NextResponse.json(
-          { error: "plan_required", message: "Start a free trial to scan repositories" },
-          { status: 403 }
+          {
+            error: "scan_limit_reached",
+            message: `You've hit your monthly scan limit on the ${user.tier} plan. Upgrade for more.`,
+          },
+          { status: 429 }
         );
       }
     }
@@ -104,7 +116,7 @@ export async function POST(request: NextRequest) {
       recommendedItems = (data ?? []) as RecommendedItem[];
     }
 
-    // --- Track scan (fire-and-forget) ---
+    // --- Track scan ---
     if (!userId) {
       if (anonSession) {
         void supabase
@@ -119,6 +131,32 @@ export async function POST(request: NextRequest) {
           .from("anonymous_sessions")
           .insert({ fingerprint, scan_count: 1 });
       }
+    } else {
+      // Persist scan history + bump monthly scan counter for signed-in users
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("monthly_scan_count")
+        .eq("id", userId)
+        .maybeSingle<{ monthly_scan_count: number }>();
+
+      const insertResult = await supabase.from("scans").insert({
+        user_id: userId,
+        repo_owner: parsed.owner,
+        repo_name: parsed.repo,
+        repo_url: `https://github.com/${parsed.owner}/${parsed.repo}`,
+        branch: parsed.branch ?? null,
+        claude_md: result.claude_md,
+        detected_stack: detectedStack,
+      });
+
+      if (insertResult.error) {
+        console.error("Could not persist scan:", insertResult.error.message);
+      }
+
+      await supabase
+        .from("users")
+        .update({ monthly_scan_count: (currentUser?.monthly_scan_count ?? 0) + 1 })
+        .eq("id", userId);
     }
 
     return NextResponse.json({

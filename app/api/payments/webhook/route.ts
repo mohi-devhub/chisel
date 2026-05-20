@@ -203,9 +203,25 @@ async function upgradeTier(
   if (plan === "solo_monthly" || plan === "solo_yearly") {
     const { error } = await supabase
       .from("users")
-      .update({ tier: "solo", monthly_gen_count: 0, monthly_reset_at: new Date().toISOString() })
+      .update({
+        tier: "solo",
+        monthly_gen_count: 0,
+        monthly_scan_count: 0,
+        monthly_reset_at: new Date().toISOString(),
+      })
       .eq("id", userId);
     if (error) throw new Error(`Could not upgrade to solo: ${error.message}`);
+  } else if (plan === "pro_monthly" || plan === "pro_yearly") {
+    const { error } = await supabase
+      .from("users")
+      .update({
+        tier: "pro",
+        monthly_gen_count: 0,
+        monthly_scan_count: 0,
+        monthly_reset_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+    if (error) throw new Error(`Could not upgrade to pro: ${error.message}`);
   } else if (plan === "team_monthly" || plan === "team_yearly") {
     // Check if org already exists for this user
     const { data: existingUser } = await supabase
