@@ -8,6 +8,7 @@ type Complexity = GenerateRequest["complexity"];
 interface DescriptionInputProps {
   description: string;
   complexity: Complexity;
+  canUseFull: boolean;
   onDescriptionChange: (value: string) => void;
   onComplexityChange: (value: Complexity) => void;
 }
@@ -37,6 +38,7 @@ const complexityOptions: Array<{
 export function DescriptionInput({
   description,
   complexity,
+  canUseFull,
   onDescriptionChange,
   onComplexityChange,
 }: DescriptionInputProps) {
@@ -58,29 +60,38 @@ export function DescriptionInput({
       </div>
 
       <div className="grid gap-2 sm:grid-cols-3">
-        {complexityOptions.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onComplexityChange(option.value)}
-            className={[
-              "rounded-lg border p-3 text-left transition-all duration-150",
-              complexity === option.value
-                ? "border-primary/60 bg-primary/10 text-foreground shadow-[inset_0_0_0_1px_theme(colors.primary/30%)]"
-                : "border-border/50 bg-background/40 hover:border-border hover:bg-muted/50 text-muted-foreground hover:text-foreground",
-            ].join(" ")}
-          >
-            <span className={[
-              "block text-sm font-medium",
-              complexity === option.value ? "text-primary" : "",
-            ].join(" ")}>
-              {option.label}
-            </span>
-            <span className="mt-1 block text-xs leading-5 opacity-70">
-              {option.description}
-            </span>
-          </button>
-        ))}
+        {complexityOptions.map((option) => {
+          const locked = option.value === "full" && !canUseFull;
+          const selected = complexity === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              disabled={locked}
+              title={locked ? "Full complexity requires a Pro plan." : undefined}
+              onClick={() => !locked && onComplexityChange(option.value)}
+              className={[
+                "rounded-lg border p-3 text-left transition-all duration-150",
+                locked
+                  ? "border-border/30 bg-muted/10 opacity-50 cursor-not-allowed"
+                  : selected
+                    ? "border-foreground/60 bg-foreground/10 text-foreground"
+                    : "border-border/50 bg-background/40 hover:border-border hover:bg-muted/50 text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              <span className={[
+                "block text-sm font-medium",
+                selected && !locked ? "text-foreground" : "",
+              ].join(" ")}>
+                {option.label}
+                {locked && <span className="ml-1 text-[10px] text-muted-foreground/60">Pro</span>}
+              </span>
+              <span className="mt-1 block text-xs leading-5 opacity-70">
+                {option.description}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

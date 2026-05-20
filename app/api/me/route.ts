@@ -31,6 +31,6 @@ export async function GET(request: NextRequest) {
     tier: user.tier,
     effectiveTier,
     remaining: quota.remaining,
-    canUseAdvanced: effectiveTier !== "free",
+    canUseAdvanced: !["free", "solo"].includes(effectiveTier),
   } satisfies AccountStatus);
 }

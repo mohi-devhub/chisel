@@ -43,7 +43,7 @@ export function OptionsPanel({
               title={
                 canUseAdvanced
                   ? option.label
-                  : "Advanced folders unlock during trial and paid tiers."
+                  : "Scripts, references and assets require a Pro plan."
               }
               className={[
                 "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 font-mono text-xs transition-all duration-150",

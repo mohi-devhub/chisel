@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Hammer, Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 
 import { DescriptionInput } from "@/components/generator/DescriptionInput";
 import { DownloadButton } from "@/components/generator/DownloadButton";
@@ -10,6 +10,7 @@ import { OptionsPanel } from "@/components/generator/OptionsPanel";
 import { PreviewPane } from "@/components/generator/PreviewPane";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SiteNav } from "@/components/ui/site-nav";
 import type { AccountStatus, GenerateRequest, GenerateResponse } from "@/types";
 
 const DEFAULT_INCLUDE: GenerateRequest["include"] = {
@@ -76,105 +77,90 @@ export default function GeneratePage() {
   const canUseAdvanced = account?.canUseAdvanced ?? false;
 
   return (
-    <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-40" />
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-60 right-0 h-[500px] w-[700px] rounded-full bg-primary/4 blur-[120px]" />
-      </div>
+    <main className="relative min-h-screen bg-background text-foreground">
+      <SiteNav
+        links={[{ label: "Pricing", href: "/pricing" }]}
+        authLinks={[{ label: "Dashboard", href: "/dashboard" }]}
+        cta={{ label: "Sign in", href: "/sign-in" }}
+      />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        {/* Nav */}
-        <header className="flex items-center justify-between pb-8">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_theme(colors.primary/50%)]">
-              <Hammer className="size-4" />
-            </div>
-            <span className="text-sm font-semibold tracking-tight">Chisel</span>
-          </Link>
-          <nav className="flex items-center gap-0.5">
-            {[
-              { label: "Pricing", href: "/pricing" },
-              { label: "Dashboard", href: "/dashboard" },
-            ].map(({ label, href }) => (
-              <Button
-                key={label}
-                variant="ghost"
-                size="sm"
-                className="h-8 text-xs text-muted-foreground hover:text-foreground"
-                asChild
-              >
-                <Link href={href}>{label}</Link>
-              </Button>
-            ))}
-          </nav>
-        </header>
-
+      <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         {/* Page heading */}
-        <div className="mb-8">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/8 px-3.5 py-1.5 text-xs font-medium text-primary">
-            <Sparkles className="size-3" />
+        <div className="mb-10">
+          <p className="mb-3 text-xs uppercase tracking-[0.2em] text-accent">
+            <Sparkles className="inline size-3 mr-1" />
             Skill Generator
-          </div>
-          <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-            Build a Claude Code skill
+          </p>
+          <h1 className="font-display text-5xl md:text-6xl tracking-tight text-foreground leading-[0.95]">
+            Build a Claude Code <em className="italic">skill</em>.
           </h1>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+          <p className="mt-4 max-w-xl text-base text-muted-foreground">
             Describe a workflow in plain English. Chisel generates a ready-to-install{" "}
-            <code className="rounded border border-border/60 bg-muted/60 px-1 py-0.5 font-mono text-xs text-foreground/80">
+            <code className="rounded border border-border/60 bg-muted/60 px-1.5 py-0.5 font-mono text-xs text-foreground/80">
               .skill
             </code>{" "}
             zip in seconds.
           </p>
         </div>
 
-        {/* Auth gate */}
+        {/* Not signed in */}
         {account && !account.signedIn && (
-          <div className="mb-6 rounded-xl border border-border/60 bg-card/50 px-5 py-4">
-            <p className="text-sm font-medium">Sign up to generate skills</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Create a free account to start a 14-day trial with 30 generations included.
+          <div className="mb-8 rounded-2xl border border-border bg-background p-6">
+            <p className="text-sm font-semibold text-foreground">Sign in to generate skills</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Choose a plan to start generating Claude Code skills.
             </p>
-            <div className="mt-3 flex gap-2">
-              <Button size="sm" className="h-8 text-xs" asChild>
-                <Link href="/sign-up">Start free trial</Link>
-              </Button>
-              <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
-                <Link href="/sign-in">Sign in</Link>
-              </Button>
+            <div className="mt-4 flex gap-3">
+              <Link
+                href="/pricing"
+                className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background hover:opacity-90 transition-opacity"
+              >
+                View plans
+              </Link>
+              <Link
+                href="/sign-in"
+                className="rounded-full border border-border bg-background px-5 py-2 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+              >
+                Sign in
+              </Link>
             </div>
           </div>
         )}
 
-        {/* Quota exceeded gate */}
+        {/* Signed in but on free tier (no plan) */}
         {account?.signedIn && account.effectiveTier === "free" && (
-          <div className="mb-6 rounded-xl border border-border/60 bg-card/50 px-5 py-4">
-            <p className="text-sm font-medium">Trial or subscription required</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Skill generation requires a Solo or Team plan. Start a 14-day trial — no credit card needed.
+          <div className="mb-8 rounded-2xl border border-border bg-background p-6">
+            <p className="text-sm font-semibold text-foreground">Subscription required</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Skill generation requires a Solo or Pro plan.
             </p>
-            <Button size="sm" className="mt-3 h-8 text-xs" asChild>
-              <Link href="/pricing">See plans</Link>
-            </Button>
+            <Link
+              href="/pricing"
+              className="mt-4 inline-flex rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background hover:opacity-90 transition-opacity"
+            >
+              See plans
+            </Link>
           </div>
         )}
 
         {/* Main layout */}
-        <div className="grid flex-1 gap-6 lg:grid-cols-[1fr_480px]">
+        <div className="grid gap-6 lg:grid-cols-[1fr_480px]">
           {/* Left — form */}
           <form onSubmit={handleGenerate} className="flex flex-col gap-5">
-            <div className="rounded-xl border border-border/50 bg-card/40 p-5">
-              <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+            <div className="rounded-2xl border border-border bg-background p-6">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Describe the skill
               </p>
               <DescriptionInput
                 description={description}
                 complexity={complexity}
+                canUseFull={canUseAdvanced}
                 onDescriptionChange={setDescription}
                 onComplexityChange={setComplexity}
               />
             </div>
 
-            <div className="rounded-xl border border-border/50 bg-card/40 p-5">
+            <div className="rounded-2xl border border-border bg-background p-6">
               <OptionsPanel
                 include={include}
                 canUseAdvanced={canUseAdvanced}
@@ -183,16 +169,16 @@ export default function GeneratePage() {
             </div>
 
             {error && (
-              <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              <p className="rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive">
                 {error}
               </p>
             )}
 
             <div className="flex items-center justify-between gap-4">
-              <Button
+              <button
                 type="submit"
                 disabled={!canGenerate}
-                className="gap-2 shadow-[0_0_20px_theme(colors.primary/20%)] hover:shadow-[0_0_28px_theme(colors.primary/35%)] transition-shadow disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-2.5 text-sm font-medium text-background hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {generating ? (
                   <>
@@ -205,14 +191,12 @@ export default function GeneratePage() {
                     Generate skill
                   </>
                 )}
-              </Button>
+              </button>
 
               {account?.signedIn && account.effectiveTier !== "free" && (
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs text-muted-foreground">
-                    {account.remaining} remaining
-                  </Badge>
-                </div>
+                <Badge variant="outline" className="text-xs text-muted-foreground">
+                  {account.remaining} remaining
+                </Badge>
               )}
 
               {generated && (
