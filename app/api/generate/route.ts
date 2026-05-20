@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     return new NextResponse(zipBody, {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${effectiveSkill.name}.skill"`,
+        "Content-Disposition": `attachment; filename="${effectiveSkill.name}.zip"`,
         "X-Generations-Remaining": String(updatedQuota.remaining),
       },
     });

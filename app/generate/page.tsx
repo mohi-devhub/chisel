@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Loader2, Sparkles } from "lucide-react";
 
 import { DescriptionInput } from "@/components/generator/DescriptionInput";
-import { DownloadButton } from "@/components/generator/DownloadButton";
 import { OptionsPanel } from "@/components/generator/OptionsPanel";
 import { PreviewPane } from "@/components/generator/PreviewPane";
 import { Badge } from "@/components/ui/badge";
@@ -76,24 +75,24 @@ export default function GeneratePage() {
   const canUseAdvanced = account?.canUseAdvanced ?? false;
 
   return (
-    <main className="relative min-h-screen bg-background text-foreground">
+    <main className="h-screen overflow-hidden flex flex-col bg-background text-foreground">
       <SiteNav
         links={[{ label: "Pricing", href: "/pricing" }]}
         authLinks={[{ label: "Dashboard", href: "/dashboard" }]}
         cta={{ label: "Sign in", href: "/sign-in" }}
       />
 
-      <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="flex flex-col flex-1 overflow-hidden mx-auto w-full max-w-6xl px-4 pt-8 pb-4 sm:px-6 lg:px-8">
         {/* Page heading */}
-        <div className="mb-10">
-          <p className="mb-3 text-xs uppercase tracking-[0.2em] text-accent">
+        <div className="mb-7 shrink-0">
+          <p className="mb-2 text-xs uppercase tracking-[0.2em] text-accent">
             <Sparkles className="inline size-3 mr-1" />
             Skill Generator
           </p>
-          <h1 className="font-display text-5xl md:text-6xl tracking-tight text-foreground leading-[0.95]">
+          <h1 className="font-display text-4xl md:text-5xl tracking-tight text-foreground leading-[0.95]">
             Build a Claude Code <em className="italic">skill</em>.
           </h1>
-          <p className="mt-4 max-w-xl text-base text-muted-foreground">
+          <p className="mt-3 max-w-xl text-sm text-muted-foreground">
             Describe a workflow in plain English. Chisel generates a ready-to-install{" "}
             <code className="rounded border border-border/60 bg-muted/60 px-1.5 py-0.5 font-mono text-xs text-foreground/80">
               .skill
@@ -104,22 +103,14 @@ export default function GeneratePage() {
 
         {/* Not signed in */}
         {account && !account.signedIn && (
-          <div className="mb-8 rounded-2xl border border-border bg-background p-6">
+          <div className="mb-4 shrink-0 rounded-2xl border border-border bg-background p-5">
             <p className="text-sm font-semibold text-foreground">Sign in to generate skills</p>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Choose a plan to start generating Claude Code skills.
-            </p>
-            <div className="mt-4 flex gap-3">
-              <Link
-                href="/pricing"
-                className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background hover:opacity-90 transition-opacity"
-              >
+            <p className="mt-1 text-sm text-muted-foreground">Choose a plan to start generating Claude Code skills.</p>
+            <div className="mt-3 flex gap-3">
+              <Link href="/pricing" className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background hover:opacity-90 transition-opacity">
                 View plans
               </Link>
-              <Link
-                href="/sign-in"
-                className="rounded-full border border-border bg-background px-5 py-2 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
-              >
+              <Link href="/sign-in" className="rounded-full border border-border bg-background px-5 py-2 text-sm font-medium text-foreground hover:bg-secondary transition-colors">
                 Sign in
               </Link>
             </div>
@@ -128,10 +119,10 @@ export default function GeneratePage() {
 
         {/* TODO: re-enable subscription gate before launch */}
 
-        {/* Main layout */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_480px]">
-          {/* Left — form */}
-          <form onSubmit={handleGenerate} className="flex flex-col gap-5">
+        {/* Main layout — fills remaining height */}
+        <div className="grid flex-1 overflow-hidden gap-5 lg:grid-cols-[1fr_480px]">
+          {/* Left — form, scrolls if content overflows */}
+          <form onSubmit={handleGenerate} className="flex flex-col gap-4 overflow-y-auto min-h-0">
             <div className="rounded-2xl border border-border bg-background p-6">
               <p className="mb-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Describe the skill
@@ -184,14 +175,11 @@ export default function GeneratePage() {
                 </Badge>
               )}
 
-              {generated && (
-                <DownloadButton generated={generated} variant="outline" size="sm" />
-              )}
             </div>
           </form>
 
-          {/* Right — preview: key resets tab selection on each new generation */}
-          <div className="flex flex-col">
+          {/* Right — preview fills height; internal scroll handled inside PreviewPane */}
+          <div className="flex flex-col min-h-0 overflow-hidden">
             <PreviewPane key={generated?.name ?? "empty"} generated={generated} />
           </div>
         </div>

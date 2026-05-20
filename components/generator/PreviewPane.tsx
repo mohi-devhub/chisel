@@ -22,9 +22,9 @@ Your generated Claude Code skill preview will appear here after Chisel builds it
 
 function buildFileTree(generated: GenerateResponse): FileEntry[] {
   const files: FileEntry[] = [{ path: "SKILL.md", content: generated.skill_md }];
-  for (const f of generated.scripts) files.push({ path: `scripts/${f.filename}`, content: f.content });
-  for (const f of generated.references) files.push({ path: `references/${f.filename}`, content: f.content });
-  for (const f of generated.assets) files.push({ path: `assets/${f.filename}`, content: f.content });
+  for (const f of generated.scripts ?? []) files.push({ path: `scripts/${f.filename}`, content: f.content });
+  for (const f of generated.references ?? []) files.push({ path: `references/${f.filename}`, content: f.content });
+  for (const f of generated.assets ?? []) files.push({ path: `assets/${f.filename}`, content: f.content });
   return files;
 }
 
@@ -40,7 +40,7 @@ export function PreviewPane({ generated }: PreviewPaneProps) {
 
   return (
     <div className={[
-      "flex flex-col rounded-2xl border overflow-hidden transition-all duration-300",
+      "flex flex-col h-full rounded-2xl border overflow-hidden transition-all duration-300",
       generated ? "border-border" : "border-border/60",
     ].join(" ")}>
       {/* Terminal title bar */}
@@ -91,9 +91,9 @@ export function PreviewPane({ generated }: PreviewPaneProps) {
         </div>
       )}
 
-      {/* Code content */}
-      <div className="flex min-h-[480px] flex-1 flex-col bg-background">
-        <pre className="h-full flex-1 overflow-auto p-5 font-mono text-xs leading-6 text-foreground/80">
+      {/* Code content — flex-1 + overflow-auto makes it scroll within the fixed pane */}
+      <div className="flex flex-1 min-h-0 flex-col bg-background">
+        <pre className="flex-1 overflow-y-auto p-5 font-mono text-xs leading-6 text-foreground/80">
           <code>{preview}</code>
         </pre>
         {generated && (
