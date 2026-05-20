@@ -18,26 +18,27 @@ interface CheckoutResponse {
 
 type BillingCycle = "monthly" | "yearly";
 
-const FREE_FEATURES = [
-  "1 free repo scan",
+const SOLO_FEATURES = [
+  "5 repo scans / month",
+  "Browse & download from registry",
   "Download generated CLAUDE.md",
-  "Browse the registry",
+  "7 skill generations / month",
+  "Standard skill complexity",
 ];
 
-const SOLO_FEATURES = [
-  "Unlimited repo scans",
-  "30 skill generations / month",
-  "Full skill structure (scripts, references, assets)",
+const PRO_FEATURES = [
+  "25 repo scans / month",
+  "15 skill generations / month",
+  "All complexity levels (simple → full)",
+  "Scripts, references & assets",
   "Publish to community registry",
-  "Generation history",
 ];
 
 const TEAM_FEATURES = [
-  "Unlimited repo scans",
-  "200 generations / month (shared pool)",
-  "Full skill structure",
-  "Publish to community registry",
-  "Private team workspace — up to 5 seats",
+  "Everything in Pro",
+  "Up to 3 seats",
+  "200 skill generations / month (shared pool)",
+  "Private team workspace",
   "Shared templates and skills",
 ];
 
@@ -48,8 +49,12 @@ export default function PricingPage() {
   const [error, setError] = useState("");
 
   const soloPlan: Plan = billing === "yearly" ? "solo_yearly" : "solo_monthly";
-  const soloPrice = billing === "yearly" ? "$79" : "$9";
+  const soloPrice = billing === "yearly" ? "$29" : "$3";
   const soloCadence = billing === "yearly" ? "/year" : "/month";
+
+  const proPlan: Plan = billing === "yearly" ? "pro_yearly" : "pro_monthly";
+  const proPrice = billing === "yearly" ? "$99" : "$12";
+  const proCadence = billing === "yearly" ? "/year" : "/month";
 
   const teamPlan: Plan = billing === "yearly" ? "team_yearly" : "team_monthly";
   const teamPrice = billing === "yearly" ? "$429" : "$49";
@@ -82,38 +87,36 @@ export default function PricingPage() {
   }
 
   return (
-    <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-grid" />
+    <main className="relative min-h-screen bg-background text-foreground">
+      <SiteNav
+        links={[
+          { label: "Pricing", href: "/pricing" },
+        ]}
+        authLinks={[{ label: "Dashboard", href: "/dashboard" }]}
+        cta={{ label: "Sign in", href: "/sign-in" }}
+      />
 
-      <div className="relative mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-        <SiteNav
-          links={[
-            { label: "Registry", href: "/registry" },
-            { label: "Pricing", href: "/pricing" },
-          ]}
-          authLinks={[{ label: "Dashboard", href: "/dashboard" }]}
-          cta={{ label: "Sign in", href: "/sign-in" }}
-        />
-
-        <section className="py-12">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+        <section className="py-16">
           {/* Hero */}
-          <div className="mb-10 text-center">
-            <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
-              Choose Your Plan
+          <div className="mb-12 text-center">
+            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-accent">Pricing</p>
+            <h1 className="font-display text-5xl md:text-6xl tracking-tight text-foreground leading-[0.95]">
+              Affordable and <em className="italic">adaptable</em>.
             </h1>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Affordable and adaptable pricing to suit your goals.
+            <p className="mt-5 text-base text-muted-foreground max-w-xl mx-auto">
+              Pick the plan that fits your workflow. Upgrade or cancel any time.
             </p>
 
             {/* Billing toggle */}
-            <div className="mt-6 inline-flex items-center rounded-full border border-border/60 bg-card p-1 text-sm">
+            <div className="mt-8 inline-flex items-center rounded-full border border-border bg-background p-1 text-sm">
               <button
                 type="button"
                 onClick={() => setBilling("monthly")}
                 className={cn(
                   "rounded-full px-4 py-1.5 font-medium transition-all",
                   billing === "monthly"
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-foreground text-background"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -125,7 +128,7 @@ export default function PricingPage() {
                 className={cn(
                   "flex items-center gap-2 rounded-full px-4 py-1.5 font-medium transition-all",
                   billing === "yearly"
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-foreground text-background"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -133,48 +136,50 @@ export default function PricingPage() {
                 <span className={cn(
                   "rounded-full px-1.5 py-0.5 text-xs font-bold",
                   billing === "yearly"
-                    ? "bg-black/20 text-primary-foreground"
-                    : "bg-primary/15 text-primary"
+                    ? "bg-background/20 text-background"
+                    : "bg-accent/15 text-accent"
                 )}>
-                  27% OFF
+                  Save ~20%
                 </span>
               </button>
             </div>
           </div>
 
           {error && (
-            <div className="mb-8 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive">
+            <div className="mb-8 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive max-w-5xl mx-auto">
               {error}
             </div>
           )}
 
           {/* Plans */}
           <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-3 lg:items-stretch">
-            {/* Free */}
-            <PlanCard
-              name="Free"
-              description="For individuals and small teams getting started."
-              price="$0"
-              cadence="/month"
-              features={FREE_FEATURES}
-              cta="Start scanning"
-              ctaHref="/"
-              variant="default"
-            />
-
-            {/* Solo — recommended */}
+            {/* Solo */}
             <PlanCard
               name="Solo"
-              description="For individual developers who live in Claude Code."
+              description="For individual developers getting started with Claude Code."
               price={soloPrice}
               cadence={soloCadence}
               features={SOLO_FEATURES}
-              cta="Start free trial"
+              cta="Get started"
               onCta={() => startCheckout(soloPlan)}
               loading={loadingPlan === soloPlan}
               disabled={loadingPlan !== null}
+              variant="default"
+            />
+
+            {/* Pro — recommended */}
+            <PlanCard
+              name="Pro"
+              description="For developers who live in Claude Code and want the full toolkit."
+              price={proPrice}
+              cadence={proCadence}
+              features={PRO_FEATURES}
+              cta="Get Pro"
+              onCta={() => startCheckout(proPlan)}
+              loading={loadingPlan === proPlan}
+              disabled={loadingPlan !== null}
               variant="featured"
-              recommended="Recommended for you"
+              recommended="Most popular"
             />
 
             {/* Team */}
@@ -184,7 +189,7 @@ export default function PricingPage() {
               price={teamPrice}
               cadence={teamCadence}
               features={TEAM_FEATURES}
-              cta="Start free trial"
+              cta="Get started"
               onCta={() => startCheckout(teamPlan)}
               loading={loadingPlan === teamPlan}
               disabled={loadingPlan !== null}
@@ -200,6 +205,8 @@ export default function PricingPage() {
     </main>
   );
 }
+
+
 
 function PlanCard({
   name,
@@ -233,25 +240,25 @@ function PlanCard({
   return (
     <div
       className={cn(
-        "group relative flex flex-col rounded-2xl border p-6 transition-all duration-200 cursor-default",
+        "group relative flex flex-col rounded-2xl border p-7 transition-all duration-200",
         isFeatured
-          ? "border-primary/50 bg-card ring-1 ring-primary/20 hover:-translate-y-1 hover:shadow-[0_8px_32px_theme(colors.primary/20%)] hover:border-primary/70"
-          : "border-border/60 bg-card hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:border-border"
+          ? "border-accent/40 bg-background ring-1 ring-accent/20 hover:-translate-y-1 hover:shadow-[0_20px_60px_-20px_rgba(255,255,255,0.08)] hover:border-accent/60"
+          : "border-border bg-background hover:-translate-y-1 hover:shadow-[0_20px_60px_-20px_rgba(255,255,255,0.05)] hover:border-border/80"
       )}
     >
       {recommended && (
-        <p className="mb-4 text-xs font-semibold tracking-wide text-primary uppercase">
+        <span className="absolute -top-3 left-6 rounded-full bg-accent px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
           {recommended}
-        </p>
+        </span>
       )}
 
       <div className="mb-1">
-        <h2 className="text-lg font-bold">{name}</h2>
+        <h2 className="text-lg font-semibold text-foreground">{name}</h2>
         <p className="mt-1 text-sm text-muted-foreground leading-snug">{description}</p>
       </div>
 
       <div className="my-5 flex items-end gap-1">
-        <span className="text-5xl font-black tracking-tight">{price}</span>
+        <span className="font-display text-5xl tracking-tight text-foreground">{price}</span>
         <span className="mb-1.5 text-sm text-muted-foreground">{cadence}</span>
       </div>
 
@@ -259,13 +266,10 @@ function PlanCard({
         What&apos;s included:
       </p>
 
-      <ul className="mb-6 flex-1 space-y-2.5">
+      <ul className="mb-7 flex-1 space-y-2.5">
         {features.map((f) => (
-          <li key={f} className="flex items-start gap-2.5 text-sm">
-            <Check className={cn(
-              "mt-0.5 size-4 shrink-0",
-              isFeatured ? "text-primary" : "text-muted-foreground"
-            )} />
+          <li key={f} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+            <Check className="mt-0.5 size-4 shrink-0 text-accent" />
             <span className="leading-snug">{f}</span>
           </li>
         ))}
@@ -274,14 +278,24 @@ function PlanCard({
       {ctaHref ? (
         <Link
           href={ctaHref}
-          className="mt-auto flex w-full items-center justify-center gap-2 rounded-lg border border-primary/60 bg-black px-4 py-2.5 text-sm font-semibold text-foreground transition-all duration-200 hover:bg-primary hover:border-primary hover:text-black"
+          className={cn(
+            "mt-auto flex w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors",
+            isFeatured
+              ? "bg-foreground text-background hover:opacity-90"
+              : "border border-border bg-background text-foreground hover:bg-secondary"
+          )}
         >
           {cta}
         </Link>
       ) : (
         <button
           type="button"
-          className="mt-auto flex w-full items-center justify-center gap-2 rounded-lg border border-primary/60 bg-black px-4 py-2.5 text-sm font-semibold text-foreground transition-all duration-200 hover:bg-primary hover:border-primary hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"
+          className={cn(
+            "mt-auto flex w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+            isFeatured
+              ? "bg-foreground text-background hover:opacity-90"
+              : "border border-border bg-background text-foreground hover:bg-secondary"
+          )}
           onClick={onCta}
           disabled={disabled}
         >
