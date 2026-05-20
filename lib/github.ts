@@ -182,12 +182,14 @@ export async function buildRepoContext(owner: string, repo: string, branch?: str
 
   const fileTree = await fetchRepoTree(owner, repo, ref);
 
+  // Always try fetching manifests directly — don't filter by fileTree since
+  // large repos (300-path cap) can push root-level manifests out of the slice.
   const filesToFetch = [
     "README.md",
     "readme.md",
     "CLAUDE.md",
-    ...MANIFEST_PATHS.filter((p) => fileTree.includes(p)),
-  ].slice(0, 18);
+    ...MANIFEST_PATHS,
+  ].slice(0, 22);
 
   const fetched = await Promise.all(
     filesToFetch.map((path) =>
