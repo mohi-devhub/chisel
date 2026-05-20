@@ -50,55 +50,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // TODO: re-enable quota + tier enforcement before launch
     const userQuota = checkUserQuota(user);
     effectiveTier = userQuota.effectiveTier;
 
-    if (!userQuota.allowed) {
-      return NextResponse.json(
-        {
-          error: "quota_exceeded",
-          message: buildQuotaMessage(userQuota.reason),
-          remaining: userQuota.remaining,
-        },
-        { status: 402 }
-      );
-    }
-
-    // Solo tier restrictions: no full complexity, no scripts/references/assets
-    if (effectiveTier === "solo") {
-      if (parsed.complexity === "full") {
-        return NextResponse.json(
-          { error: "tier_restricted", message: "Full complexity requires a Pro plan." },
-          { status: 403 }
-        );
-      }
-      if (parsed.include.scripts || parsed.include.references || parsed.include.assets) {
-        return NextResponse.json(
-          { error: "tier_restricted", message: "Scripts, references and assets require a Pro plan." },
-          { status: 403 }
-        );
-      }
-    }
-
     const generated = await generateSkill(parsed);
-    const effectiveSkill =
-      effectiveTier === "solo" ? stripAdvancedFiles(generated) : generated;
+    const effectiveSkill = generated;
     const updatedQuota = await consumeUserQuota(user);
-
-    if (!updatedQuota.allowed) {
-      return NextResponse.json(
-        {
-          error: "quota_exceeded",
-          message: user
-            ? buildQuotaMessage(
-                "reason" in updatedQuota ? updatedQuota.reason : undefined
-              )
-            : "Sign up to start a 7-day Creator trial before generating.",
-          remaining: updatedQuota.remaining,
-        },
-        { status: 402 }
-      );
-    }
 
     const zip = await packageSkill(effectiveSkill);
     const storagePath = `skills/${userId ?? "anon"}/${fingerprint.slice(

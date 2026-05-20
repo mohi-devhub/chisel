@@ -38,8 +38,7 @@ export default function GeneratePage() {
   }, []);
 
   const canGenerate =
-    account?.signedIn &&
-    account.effectiveTier !== "free" &&
+    account?.signedIn && // TODO: re-add tier check before launch
     description.trim().length >= 10 &&
     !generating;
 
@@ -127,21 +126,7 @@ export default function GeneratePage() {
           </div>
         )}
 
-        {/* Signed in but on free tier (no plan) */}
-        {account?.signedIn && account.effectiveTier === "free" && (
-          <div className="mb-8 rounded-2xl border border-border bg-background p-6">
-            <p className="text-sm font-semibold text-foreground">Subscription required</p>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Skill generation requires a Solo or Pro plan.
-            </p>
-            <Link
-              href="/pricing"
-              className="mt-4 inline-flex rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background hover:opacity-90 transition-opacity"
-            >
-              See plans
-            </Link>
-          </div>
-        )}
+        {/* TODO: re-enable subscription gate before launch */}
 
         {/* Main layout */}
         <div className="grid gap-6 lg:grid-cols-[1fr_480px]">
