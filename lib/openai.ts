@@ -7,21 +7,23 @@ const GENERATION_ATTEMPTS = 2;
 
 const systemPrompt = `You are an expert at writing Claude Code skills.
 
-A skill is a structured folder that can contain:
-- SKILL.md: YAML frontmatter with name and description, followed by concise markdown instructions.
-- scripts/: deterministic Python or shell scripts.
-- references/: longer markdown documentation loaded only when needed.
-- assets/: static files such as templates or examples.
+A skill is a structured folder that contains:
+- SKILL.md: YAML frontmatter with name and description, followed by markdown instructions.
+- scripts/: Python or shell scripts that automate tasks.
+- references/: longer markdown docs or guides loaded as context.
+- assets/: static files such as templates, config examples, or sample outputs.
 
 Rules:
 1. SKILL.md must begin with valid YAML frontmatter delimited by ---.
-2. Frontmatter must include string fields named "name" and "description".
-3. The description must explain when Claude Code should trigger the skill. Make it specific and actionable.
-4. Keep SKILL.md focused and under 500 lines. Put longer detail in references when requested.
-5. Scripts are only for deterministic, repetitive, or computational tasks.
-6. File names must be relative names only. Do not include absolute paths, parent directory traversal, or markdown fences.
+2. Frontmatter must include string fields "name" and "description".
+3. The description explains when Claude Code should use the skill — make it specific.
+4. File names must be relative names only. No absolute paths, no "..", no markdown fences.
+5. MANDATORY: if the user requests scripts, references, or assets, you MUST populate those arrays. Non-empty arrays are required — do not return empty arrays for requested folders.
+6. For "full" complexity, write comprehensive instructions with multiple steps, examples, and edge cases. Populate ALL requested folder arrays with rich, useful content.
+7. For "standard" complexity, write practical instructions with a few examples.
+8. For "simple" complexity, write short focused instructions.
 
-Respond only with JSON in this exact shape:
+Respond ONLY with JSON in this exact shape — no other text:
 {
   "name": "folder-safe-skill-name",
   "skill_md": "full SKILL.md content as a string",
@@ -36,15 +38,34 @@ export function buildPrompt(request: GenerateRequest, attempt = 1) {
       ? "\nPrevious response could not be parsed or validated. Return strictly valid JSON with valid SKILL.md YAML frontmatter."
       : "";
 
+  const folderRequirements: string[] = [];
+  if (request.include.scripts) {
+    folderRequirements.push("- MUST include at least one file in the scripts/ array (a real, working script).");
+  }
+  if (request.include.references) {
+    folderRequirements.push("- MUST include at least one file in the references/ array (a detailed markdown reference doc).");
+  }
+  if (request.include.assets) {
+    folderRequirements.push("- MUST include at least one file in the assets/ array (a useful template or example file).");
+  }
+
+  const complexityGuidance =
+    request.complexity === "full"
+      ? "Write comprehensive instructions: multiple numbered steps, concrete examples, edge cases, and gotchas. This is a full-complexity skill — be thorough."
+      : request.complexity === "standard"
+        ? "Write practical instructions with at least one usage example."
+        : "Write short, focused instructions for a narrow workflow.";
+
   return `Generate a Claude Code skill for the following request.
 
 Description:
 ${request.description}
 
 Complexity: ${request.complexity}
-Include scripts: ${request.include.scripts}
-Include references: ${request.include.references}
-Include assets: ${request.include.assets}
+${complexityGuidance}
+
+Folder requirements:
+${folderRequirements.length > 0 ? folderRequirements.join("\n") : "- Only SKILL.md is required (no extra folders)."}
 ${retryInstruction}
 
 Return JSON only.`;
