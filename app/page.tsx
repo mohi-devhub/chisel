@@ -116,7 +116,7 @@ function Hero() {
             href="/sign-up"
             className="rounded-full bg-foreground px-6 py-3 text-sm font-medium font-body text-background hover:opacity-90 transition-opacity inline-flex items-center gap-2"
           >
-            Start free scan
+            Scan a repo
             <ArrowRight className="size-4" />
           </Link>
         </div>
@@ -250,7 +250,7 @@ function FeatureScanner() {
             href="/sign-up"
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background hover:opacity-90 transition-opacity"
           >
-            Scan your repo free
+            Scan a repo
             <ArrowRight className="size-4" />
           </Link>
         </div>
@@ -299,7 +299,7 @@ function FeatureRegistry() {
           </ul>
 
           <p className="mt-8 text-xs text-muted-foreground">
-            Available to all signed-in users — start with a free account.
+            Available on all plans. Browse the registry without an account.
           </p>
         </div>
       </div>
@@ -552,14 +552,14 @@ function FinalCTA() {
           Ready to supercharge <em className="italic">Claude Code</em>?
         </h2>
         <p className="mt-5 text-base md:text-lg text-muted-foreground max-w-lg mx-auto">
-          Your first scan is free. No credit card. Takes 30 seconds.
+          Takes 30 seconds. No commitment. Scan any public GitHub repo.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/sign-up"
             className="rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background hover:opacity-90 transition-opacity inline-flex items-center gap-2"
           >
-            Start for free
+            Get started
             <ArrowRight className="size-4" />
           </Link>
           <Link
