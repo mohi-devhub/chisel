@@ -45,11 +45,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        {
-          error: "auth_required",
-          message: "Sign up to start a 7-day Creator trial before generating.",
-          remaining: 0,
-        },
+        { error: "auth_required", message: "Sign in and choose a plan to generate skills.", remaining: 0 },
         { status: 401 }
       );
     }
@@ -68,9 +64,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Solo tier restrictions: no full complexity, no scripts/references/assets
+    if (effectiveTier === "solo") {
+      if (parsed.complexity === "full") {
+        return NextResponse.json(
+          { error: "tier_restricted", message: "Full complexity requires a Pro plan." },
+          { status: 403 }
+        );
+      }
+      if (parsed.include.scripts || parsed.include.references || parsed.include.assets) {
+        return NextResponse.json(
+          { error: "tier_restricted", message: "Scripts, references and assets require a Pro plan." },
+          { status: 403 }
+        );
+      }
+    }
+
     const generated = await generateSkill(parsed);
     const effectiveSkill =
-      user && effectiveTier !== "free" ? generated : stripAdvancedFiles(generated);
+      effectiveTier === "solo" ? stripAdvancedFiles(generated) : generated;
     const updatedQuota = await consumeUserQuota(user);
 
     if (!updatedQuota.allowed) {
@@ -205,10 +217,9 @@ function stripAdvancedFiles(skill: GeneratedSkill): GeneratedSkill {
 
 function buildQuotaMessage(reason?: string) {
   if (reason === "monthly_limit") {
-    return "You have reached your monthly generation limit.";
+    return "You have reached your monthly generation limit. Upgrade for more.";
   }
-
-  return "Your trial or paid plan is required to generate skills.";
+  return "A paid plan is required to generate skills.";
 }
 
 async function storeGeneratedSkill({
