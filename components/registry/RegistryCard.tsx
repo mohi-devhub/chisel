@@ -9,7 +9,7 @@ export function RegistryCard({ item }: { item: RegistryItem }) {
   const TypeIcon = item.type === "template" ? FileText : Sparkles;
 
   return (
-    <div className="group flex flex-col rounded-xl border border-border/60 bg-card/80 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_0_20px_theme(colors.primary/8%)]">
+    <div className="group flex flex-col rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 hover:bg-card/80">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Badge variant="secondary" className="gap-1 text-xs capitalize">
           <TypeIcon className="size-3" />
@@ -26,7 +26,7 @@ export function RegistryCard({ item }: { item: RegistryItem }) {
         </span>
       </div>
 
-      <h3 className="line-clamp-2 text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
+      <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors">
         <Link href={`/registry/${item.id}`}>{item.name}</Link>
       </h3>
 

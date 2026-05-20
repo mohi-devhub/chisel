@@ -3,9 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Hammer, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface NavLink {
@@ -33,73 +32,27 @@ export function SiteNav({ links, authLinks = [], cta }: SiteNavProps) {
   const isActive = (href: string) => pathname === href;
 
   return (
-    <header className="relative flex items-center justify-between py-5">
-      {/* Logo */}
-      <Link href="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
-        <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_20px_theme(colors.primary/60%)]">
-          <Hammer className="size-3.5" />
-        </div>
-        <span className="text-sm font-semibold">Chisel</span>
-      </Link>
+    <header className="sticky top-0 z-30 backdrop-blur-md bg-background/75 border-b border-border/60">
+      <div className="flex items-center justify-between px-6 md:px-12 lg:px-20 py-4 font-body">
+        {/* Logo */}
+        <Link
+          href="/"
+          className="text-xl font-semibold tracking-tight text-foreground"
+          onClick={() => setOpen(false)}
+        >
+          <span className="text-accent">✦</span> Chisel
+        </Link>
 
-      {/* Desktop nav */}
-      <nav className="hidden items-center gap-0.5 sm:flex">
-        {visibleLinks.map(({ label, href }) => (
-          <Button
-            key={href}
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "h-8 text-xs transition-colors",
-              isActive(href)
-                ? "text-foreground underline underline-offset-4 decoration-primary/60"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            asChild
-          >
-            <Link href={href}>{label}</Link>
-          </Button>
-        ))}
-
-        {isLoaded && !isSignedIn && (
-          <Button
-            size="sm"
-            className="ml-3 h-8 text-xs px-4 shadow-[0_0_20px_theme(colors.primary/40%)] hover:shadow-[0_0_28px_theme(colors.primary/60%)] transition-shadow"
-            asChild
-          >
-            <Link href={signInLink.href}>{signInLink.label}</Link>
-          </Button>
-        )}
-
-        {isLoaded && isSignedIn && (
-          <div className="ml-3">
-            <UserButton appearance={{ elements: { avatarBox: "size-8" } }} />
-          </div>
-        )}
-      </nav>
-
-      {/* Mobile hamburger */}
-      <button
-        type="button"
-        className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground sm:hidden"
-        onClick={() => setOpen((v) => !v)}
-        aria-label={open ? "Close menu" : "Open menu"}
-      >
-        {open ? <X className="size-5" /> : <Menu className="size-5" />}
-      </button>
-
-      {/* Mobile dropdown */}
-      {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 flex flex-col gap-1 rounded-xl border border-border/60 bg-card/95 p-3 shadow-xl backdrop-blur-xl sm:hidden">
+        {/* Desktop nav */}
+        <nav className="hidden items-center gap-8 sm:flex">
           {visibleLinks.map(({ label, href }) => (
             <Link
               key={href}
               href={href}
-              onClick={() => setOpen(false)}
               className={cn(
-                "rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted/40",
+                "text-sm transition-colors",
                 isActive(href)
-                  ? "text-foreground underline underline-offset-4 decoration-primary/60"
+                  ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -110,19 +63,65 @@ export function SiteNav({ links, authLinks = [], cta }: SiteNavProps) {
           {isLoaded && !isSignedIn && (
             <Link
               href={signInLink.href}
-              onClick={() => setOpen(false)}
-              className="mt-1 rounded-lg bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground"
+              className="rounded-full px-5 py-2 text-sm font-medium bg-foreground text-background hover:opacity-90 transition-opacity"
             >
               {signInLink.label}
             </Link>
           )}
 
           {isLoaded && isSignedIn && (
-            <div className="mt-2 flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2">
-              <UserButton appearance={{ elements: { avatarBox: "size-6" } }} />
-              <span className="text-sm text-muted-foreground">Account & sign out</span>
-            </div>
+            <UserButton appearance={{ elements: { avatarBox: "size-8" } }} />
           )}
+        </nav>
+
+        {/* Mobile hamburger */}
+        <button
+          type="button"
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground sm:hidden"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={open ? "Close menu" : "Open menu"}
+        >
+          {open ? <X className="size-5" /> : <Menu className="size-5" />}
+        </button>
+      </div>
+
+      {/* Mobile dropdown */}
+      {open && (
+        <div className="sm:hidden border-t border-border bg-background px-6 py-4">
+          <div className="flex flex-col gap-3">
+            {visibleLinks.map(({ label, href }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "rounded-lg px-3 py-2 text-sm transition-colors",
+                  isActive(href)
+                    ? "text-foreground bg-secondary"
+                    : "text-muted-foreground hover:bg-secondary"
+                )}
+              >
+                {label}
+              </Link>
+            ))}
+
+            {isLoaded && !isSignedIn && (
+              <Link
+                href={signInLink.href}
+                onClick={() => setOpen(false)}
+                className="mt-1 rounded-full bg-foreground px-4 py-2 text-center text-sm font-medium text-background"
+              >
+                {signInLink.label}
+              </Link>
+            )}
+
+            {isLoaded && isSignedIn && (
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+                <UserButton appearance={{ elements: { avatarBox: "size-6" } }} />
+                <span className="text-sm text-muted-foreground">Account</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </header>

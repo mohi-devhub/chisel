@@ -58,37 +58,31 @@ export default async function RegistryPage({
   const totalPages = Math.max(1, Math.ceil(registry.total / registry.pageSize));
 
   return (
-    <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-40" />
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-60 left-1/2 -translate-x-1/2 h-[600px] w-[800px] rounded-full bg-primary/5 blur-[120px]" />
-      </div>
+    <main className="relative min-h-screen bg-background text-foreground">
+      <SiteNav
+        links={[
+          { label: "Pricing", href: "/pricing" },
+        ]}
+        authLinks={[{ label: "Dashboard", href: "/dashboard" }]}
+        cta={{ label: "Sign in", href: "/sign-in" }}
+      />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 sm:px-6 lg:px-8">
-        <SiteNav
-          links={[
-            { label: "Registry", href: "/registry" },
-            { label: "Pricing", href: "/pricing" },
-          ]}
-          authLinks={[{ label: "Dashboard", href: "/dashboard" }]}
-          cta={{ label: "Sign in", href: "/sign-in" }}
-        />
-
-        <section className="py-8">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+        <section className="py-12">
           {/* Page header */}
-          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <div className="mb-4 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Library className="size-5" />
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Registry</h1>
-              <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-                Community-built CLAUDE.md templates and skills for Claude Code.
+              <p className="mb-3 text-xs uppercase tracking-[0.2em] text-accent">Registry</p>
+              <h1 className="font-display text-5xl md:text-6xl tracking-tight text-foreground leading-[0.95]">
+                Community-built <em className="italic">skills</em>.
+              </h1>
+              <p className="mt-4 max-w-lg text-base text-muted-foreground">
+                Browse CLAUDE.md templates and skills published by the Chisel community.
               </p>
             </div>
             <Button
               asChild
-              className="shadow-[0_0_20px_theme(colors.primary/20%)] hover:shadow-[0_0_28px_theme(colors.primary/35%)] transition-shadow"
+              className="rounded-full bg-foreground text-background hover:opacity-90"
             >
               <Link href="/dashboard">Publish</Link>
             </Button>
@@ -181,7 +175,7 @@ export default async function RegistryPage({
 
 function TypeTabs({ current }: { current: RegistryItemType }) {
   return (
-    <div className="mb-5 inline-flex gap-1 rounded-lg border border-border/50 bg-card/50 p-1">
+    <div className="mb-6 inline-flex gap-1 rounded-full border border-border bg-background p-1">
       <Link href="/registry?type=template" className={tabClass(current === "template")}>
         <FileText className="size-3.5" />
         Templates
@@ -196,9 +190,9 @@ function TypeTabs({ current }: { current: RegistryItemType }) {
 
 function tabClass(active: boolean) {
   const base =
-    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors";
+    "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors";
   return active
-    ? `${base} bg-background text-foreground shadow-sm`
+    ? `${base} bg-foreground text-background`
     : `${base} text-muted-foreground hover:text-foreground`;
 }
 
