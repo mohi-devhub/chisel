@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: "seat_limit",
-          message: "Team seat limit reached (5 members).",
+          message: "Team seat limit reached (3 members).",
         },
         { status: 409 }
       );

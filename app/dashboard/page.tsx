@@ -1,9 +1,9 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import {
   Calendar,
-  CreditCard,
   Download,
   FileArchive,
+  FolderGit2,
   LibraryBig,
   PackageCheck,
   Store,
@@ -13,6 +13,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
+import { RepoScanner } from "@/components/dashboard/RepoScanner";
 import { PublishSkillDialog } from "@/components/marketplace/PublishSkillDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,7 @@ export default async function DashboardPage({
     dashboard.user?.tier,
     dashboard.user?.trial_ends_at
   );
-  const canPublish = ["solo", "team_owner", "team_member"].includes(
+  const canPublish = ["pro", "team_owner", "team_member"].includes(
     dashboard.user?.tier ?? ""
   );
   const publishedSkillIds = new Set(
@@ -67,43 +68,39 @@ export default async function DashboardPage({
   );
 
   return (
-    <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-40" />
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-60 right-0 h-[500px] w-[700px] rounded-full bg-primary/4 blur-[120px]" />
-      </div>
+    <main className="relative min-h-screen bg-background text-foreground">
+      <SiteNav
+        links={[
+          ...(dashboard.workspace ? [{ label: "Workspace", href: "/workspace" }] : []),
+          { label: "Pricing", href: "/pricing" },
+        ]}
+      />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <SiteNav
-          links={[
-            { label: "Registry", href: "/registry" },
-            ...(dashboard.workspace ? [{ label: "Workspace", href: "/workspace" }] : []),
-            { label: "Pricing", href: "/pricing" },
-          ]}
-        />
-
-        <section className="py-8">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+        <section className="py-12">
           {params.payment === "success" ? (
-            <div className="mb-5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary/80">
+            <div className="mb-6 rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-accent">
               Payment received. Your account will update after Dodo Payments confirms the webhook.
             </div>
           ) : null}
 
           {/* Page header */}
-          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <Badge
                 variant="outline"
-                className="mb-3 capitalize border-primary/30 bg-primary/5 text-primary text-xs"
+                className="mb-3 capitalize border-accent/30 bg-accent/5 text-accent text-xs"
               >
                 {activeTier}
               </Badge>
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Dashboard</h1>
-              <p className="mt-2 text-sm text-muted-foreground">{accountEmail}</p>
+              <h1 className="font-display text-5xl md:text-6xl tracking-tight text-foreground leading-[0.95]">
+                Dashboard
+              </h1>
+              <p className="mt-3 text-sm text-muted-foreground">{accountEmail}</p>
             </div>
             <Button
               asChild
-              className="shadow-[0_0_20px_theme(colors.primary/20%)] hover:shadow-[0_0_28px_theme(colors.primary/35%)] transition-shadow"
+              className="rounded-full bg-foreground text-background hover:opacity-90"
             >
               <Link href="/generate">
                 <PackageCheck className="size-4" />
@@ -112,22 +109,27 @@ export default async function DashboardPage({
             </Button>
           </div>
 
+          {/* Repo scanner — primary entry point */}
+          <div className="mb-8">
+            <RepoScanner />
+          </div>
+
           {/* Metrics */}
           <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard
-              icon={<FileArchive className="size-4" />}
-              label="Generated"
-              value={dashboard.skills.length}
+              icon={<FolderGit2 className="size-4" />}
+              label="Scans"
+              value={dashboard.scans.length}
               accent
+            />
+            <MetricCard
+              icon={<FileArchive className="size-4" />}
+              label="Skills"
+              value={dashboard.skills.length}
             />
             <MetricCard
               icon={<Calendar className="size-4" />}
               label="Monthly use"
-              value={dashboard.user?.monthly_gen_count ?? 0}
-            />
-            <MetricCard
-              icon={<CreditCard className="size-4" />}
-              label="Monthly gens"
               value={dashboard.user?.monthly_gen_count ?? 0}
             />
             <MetricCard
@@ -138,11 +140,11 @@ export default async function DashboardPage({
           </div>
 
           {dashboard.workspace ? (
-            <Card className="mb-6 rounded-xl border-primary/30 bg-primary/5">
+            <Card className="mb-6 rounded-2xl border-accent/30 bg-accent/5">
               <CardHeader className="flex flex-row items-start justify-between gap-3">
                 <div>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Users className="size-4" />
+                  <CardTitle className="flex items-center gap-2 text-base text-foreground">
+                    <Users className="size-4 text-accent" />
                     {dashboard.workspace.org_name}
                   </CardTitle>
                   <CardDescription className="mt-1">
@@ -160,10 +162,74 @@ export default async function DashboardPage({
             </Card>
           ) : null}
 
+          {/* Scan history */}
+          <Card className="mb-6 rounded-2xl border-border bg-background">
+            <CardHeader>
+              <CardTitle>Scan History</CardTitle>
+              <CardDescription>
+                CLAUDE.md files you&apos;ve generated. Re-download any one anytime.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {dashboard.scans.length > 0 ? (
+                <div className="divide-y divide-border/50 rounded-lg border border-border/50 overflow-hidden">
+                  {dashboard.scans.map((scan) => (
+                    <div
+                      key={scan.id}
+                      className="flex flex-col gap-3 p-4 transition-colors hover:bg-muted/30 md:flex-row md:items-center md:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="truncate text-sm font-medium font-mono">
+                            {scan.repo_owner}/{scan.repo_name}
+                          </h2>
+                          {scan.branch ? (
+                            <Badge variant="outline" className="text-xs">{scan.branch}</Badge>
+                          ) : null}
+                        </div>
+                        {scan.detected_stack.length > 0 ? (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {scan.detected_stack.slice(0, 6).map((tag) => (
+                              <Badge key={tag} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
+                        <p className="mt-1.5 text-xs text-muted-foreground/60">
+                          {formatDate(scan.created_at)}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={scan.repo_url} target="_blank" rel="noopener noreferrer">
+                            View repo
+                          </a>
+                        </Button>
+                        <Button size="sm" asChild>
+                          <a href={`/api/dashboard/scans/${scan.id}/download`}>
+                            <Download className="size-3.5" />
+                            CLAUDE.md
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={<FolderGit2 className="size-5" />}
+                  title="No scans yet"
+                  description="Use the scanner above to generate your first CLAUDE.md."
+                />
+              )}
+            </CardContent>
+          </Card>
+
           {/* Content grid */}
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
             {/* Generation history */}
-            <Card className="rounded-xl border-border/60 bg-card/80">
+            <Card className="rounded-2xl border-border bg-background">
               <CardHeader>
                 <CardTitle>Generation History</CardTitle>
                 <CardDescription>
@@ -222,7 +288,7 @@ export default async function DashboardPage({
             </Card>
 
             {/* Marketplace publishing */}
-            <Card className="rounded-xl border-border/60 bg-card/80">
+            <Card className="rounded-2xl border-border bg-background">
               <CardHeader>
                 <CardTitle>Marketplace Publishing</CardTitle>
                 <CardDescription>
@@ -304,14 +370,14 @@ function MetricCard({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card/80 p-4">
+    <div className="rounded-2xl border border-border bg-background p-5">
       <div className={[
         "mb-3 flex size-9 items-center justify-center rounded-lg",
-        accent ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
+        accent ? "bg-accent/10 text-accent" : "bg-secondary text-muted-foreground",
       ].join(" ")}>
         {icon}
       </div>
-      <div className="text-2xl font-bold">{value}</div>
+      <div className="font-display text-3xl tracking-tight text-foreground">{value}</div>
       <div className="mt-1 text-xs text-muted-foreground">{label}</div>
     </div>
   );

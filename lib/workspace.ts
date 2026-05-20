@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Tier } from "@/types";
 
 export const WORKSPACE_BUCKET = "chisel-workspace";
-export const TEAM_SEAT_LIMIT = 5;
+export const TEAM_SEAT_LIMIT = 3;
 
 export type OrgItemType = "skill" | "template";
 export type OrgRole = "owner" | "member";
